@@ -1,0 +1,6 @@
+let g:netrw_dirhistmax  =10
+let g:netrw_dirhist_cnt =4
+let g:netrw_dirhist_1='/export/home/ndronen/proj/R/trunk/tools/src/ktutil'
+let g:netrw_dirhist_2='/export/home/ndronen/proj/R/trunk/tools/src/ktdata/R'
+let g:netrw_dirhist_3='/Users/ndronen/.vim'
+let g:netrw_dirhist_4='/Users/ndronen/Source/tiered/src'
