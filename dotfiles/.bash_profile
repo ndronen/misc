@@ -22,4 +22,7 @@ export R_HISTFILE=~/.Rhistory
 
 export PATH=/usr/local/bin:~/proj/pylearn2/pylearn2/scripts:~/proj/misc/bin:$PATH
 
+export PYENV_ROOT=/usr/local/opt/pyenv  
+eval "$(pyenv init -)"
+
 . ~/.bashrc
