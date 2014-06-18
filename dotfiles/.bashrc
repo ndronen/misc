@@ -61,13 +61,3 @@ then
         }
     fi
 fi
-
-lspath() {
-	echo $PATH | tr ':' '\n'
-	return;
-}
-
-ctand() {
-    wget http://mirror.ctan.org/macros/latex/contrib/$1.zip && unzip $1.zip
-}
-
