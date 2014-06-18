@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+
+import sys
+import random
+import optparse
+
+def main():
+    p = optparse.OptionParser(
+        description='Sample lines from a file or stdin.  Prints sampled lines to stdout.  Optionally prints unsampled lines to stderr.',
+        prog='sample-lines', version='0.1',
+        usage='%prog NUM_LINES [ FILE ]')
+
+    p.add_option("-u", "--unsampled-to-stderr",
+        action='store_true',
+        help="Print unsampled lines to stderr.")
+
+    options, arguments = p.parse_args()
+
+    if len(arguments) not in [1, 2]:
+        p.print_help()
+        return 1
+
+    num_lines = int(arguments[0])
+
+    if len(arguments) == 2:
+        lines = open(arguments[1]).readlines()
+    else:
+        lines = sys.stdin.readlines()
+
+    n = 0
+
+    if num_lines > len(lines):
+        n = num_lines - len(lines)
+
+    while n < num_lines:
+        i = int(random.random() * len(lines))
+        print lines[i],
+        del lines[i]
+        n = n + 1
+
+    if options.unsampled_to_stderr:
+        for unsampled in lines:
+            print >>sys.stderr, unsampled,
+    
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())
+
