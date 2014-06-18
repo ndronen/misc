@@ -24,5 +24,6 @@ export PATH=/usr/local/bin:~/proj/pylearn2/pylearn2/scripts:~/proj/misc/bin:$PAT
 
 export PYENV_ROOT=/usr/local/opt/pyenv  
 eval "$(pyenv init -)"
+eval "$(pyenv virtualenv init -)"
 
 . ~/.bashrc
