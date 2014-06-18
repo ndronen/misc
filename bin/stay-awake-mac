@@ -1,0 +1,4 @@
+#!/bin/bash
+# The integer argument to -t is the number of seconds the computer
+# should refuse to put itself to sleep.
+caffeinate -t $1
