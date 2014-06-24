@@ -7,12 +7,6 @@ then
     set -o vi
     export PS1='[\u@\h \t \w] \n$ '
 
-    # For when using virtualenv with screen(1).
-    if [ -e bin/activate ]
-    then
-        source bin/activate
-    fi
-
     # Only keep unique entries in .bash_history.
     export HISTCONTROL=ignoredups
     export HISTSIZE=5000
