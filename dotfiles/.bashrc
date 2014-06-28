@@ -1,6 +1,9 @@
 # For R
 export COLUMNS
 
+# git clone git://github.com/kennethreitz/autoenv.git ~/.autoenv
+source ~/.autoenv/activate.sh
+
 # If running interactively, then:
 if [ "$PS1" ]
 then
