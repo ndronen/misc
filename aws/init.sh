@@ -3,7 +3,7 @@
 sudo apt-get install git apt-file
 sudo apt-file update
 sudo apt-get install gcc g++ libgfortran3 liblapack3 parallel 
-sudo apt-get install graphicsmagick python-pgmagick
+sudo apt-get install graphicsmagick python-pgmagick python-dev
 
 git config --global user.name "Nicholas Dronen"
 git config --global user.email ndronen@gmail.com
