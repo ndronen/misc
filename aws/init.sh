@@ -29,7 +29,7 @@ function init_ubuntu_ami {
 }
 
 function init_amazon_ami {
-    sudo vi /etc/yum.repos.d/epel.repo
+    sudo vi +/^enabled /etc/yum.repos.d/epel.repo
     sudo yum install -y gcc gcc-c++ libgfortran lapack lapack-devel 
     ( 
         cd /tmp
