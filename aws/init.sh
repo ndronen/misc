@@ -2,7 +2,15 @@
 
 metadata_url=http://169.254.169.254/latest/meta-data/
 
+function num_cores {
+    grep -c ^processor /proc/cpuinfo 
+}
+
 function init_ami {
+    (
+        cd 
+        cp -r proj/misc/dotfiles/.[a-z][a-z]* .
+    )
     git config --global user.name "Nicholas Dronen"
     git config --global user.email ndronen@gmail.com
 
@@ -24,10 +32,10 @@ function init_amazon_ami {
     sudo vi /etc/yum.repos.d/epel.repo
     sudo yum install -y gcc gcc-c++ libgfortran lapack lapack-devel 
     ( 
-        mkdir -p ~/bin
-        cd ~/bin
+        cd /tmp
         wget http://git.savannah.gnu.org/cgit/parallel.git/plain/src/parallel
         chmod 755 parallel
+        sudo mv parallel /usr/bin
     )
     sudo yum install -y GraphicsMagick GraphicsMagick-devel
     sudo yum install -y GraphicsMagick-c++ GraphicsMagick-c++-devel
@@ -37,11 +45,8 @@ function init_amazon_ami {
     sudo easy_install pip
     sudo pip install pgmagick
     
-    sudo groupadd -c "Ubuntu compatibility" --gid 1000 ubuntu
-    sudo useradd -c "Ubuntu compatibility" -s /bin/bash --uid 1000 -m ubuntu
-    sudo cp -r /home/ec2-user/.ssh /home/ubuntu
-    sudo chown -R ubuntu:ubuntu /home/ubuntu/.ssh
-    sudo visudo
+    sudo groupmod --gid 1000 ec2-user
+    sudo usermod --uid 1000 ec2-user
 
     init_ami
 }
