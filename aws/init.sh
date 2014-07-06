@@ -39,6 +39,8 @@ function init_amazon_ami {
     
     sudo groupadd -c "Ubuntu compatibility" --gid 1000 ubuntu
     sudo useradd -c "Ubuntu compatibility" -s /bin/bash --uid 1000 -m ubuntu
+    sudo cp -r /home/ec2-user/.ssh /home/ubuntu
+    sudo chown -R ubuntu:ubuntu /home/ubuntu/.ssh
     sudo visudo
 
     init_ami
