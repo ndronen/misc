@@ -42,11 +42,12 @@ function init_amazon_ami {
     sudo yum install -y python-devel boost-python boost-devel
     sudo yum install -y git numpy scipy python-sphinx python-pygments
 
-    sudo easy_install pip
-    sudo pip install pgmagick
+    sudo easy_install pip 
     sudo pip install scikit-learn
     
     init_ami
+
+    ( sudo pip install pgmagick > /tmp/pgmagick.out 2>&1 ) &
 }
 
 if [[ $(curl $metadata_url/ami-id) == ami-9c13ecf4 ]]
