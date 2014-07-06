@@ -46,9 +46,6 @@ function init_amazon_ami {
     sudo pip install pgmagick
     sudo pip install scikit-learn
     
-    sudo groupmod --gid 1000 ec2-user
-    sudo usermod --uid 1000 ec2-user
-
     init_ami
 }
 
