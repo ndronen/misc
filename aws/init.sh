@@ -1,5 +1,7 @@
 #!/bin/bash -x
 
+BIN=$(dirname $(readlink -f $0))
+
 metadata_url=http://169.254.169.254/latest/meta-data/
 
 function num_cores {
@@ -40,10 +42,13 @@ function init_amazon_ami {
     sudo yum install -y GraphicsMagick GraphicsMagick-devel
     sudo yum install -y GraphicsMagick-c++ GraphicsMagick-c++-devel
     sudo yum install -y python-devel boost-python boost-devel
-    sudo yum install -y git numpy scipy python-sphinx python-pygments
+    sudo yum install -y git 
+    sudo yum install -y python27
 
-    sudo easy_install pip 
-    sudo pip install scikit-learn
+    $BIN/install-python.sh 2.7.6
+
+    #sudo easy_install pip 
+    #sudo pip install scikit-learn
     
     init_ami
 
