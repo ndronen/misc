@@ -32,10 +32,11 @@ function init_amazon_ami {
     sudo yum install -y GraphicsMagick GraphicsMagick-devel
     sudo yum install -y GraphicsMagick-c++ GraphicsMagick-c++-devel
     sudo yum install -y python-devel boost-python boost-devel
-    sudo yum install -y git
+    sudo yum install -y git numpy scipy python-sphinx python-pygments
 
     sudo easy_install pip
     sudo pip install pgmagick
+    sudo pip install scikit-learn
     
     sudo groupadd -c "Ubuntu compatibility" --gid 1000 ubuntu
     sudo useradd -c "Ubuntu compatibility" -s /bin/bash --uid 1000 -m ubuntu
