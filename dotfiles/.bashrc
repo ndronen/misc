@@ -1,6 +1,9 @@
 # For R
 export COLUMNS
 
+# If Mac
+source /usr/local/opt/autoenv/activate.sh
+
 # If running interactively, then:
 if [ "$PS1" ]
 then
