@@ -21,8 +21,10 @@ export PYLEARN2_DATA_PATH=~/proj/pylearn2-data
 export R_HISTFILE=~/.Rhistory
 
 export PATH=/usr/local/bin:~/proj/pylearn2/pylearn2/scripts:$PATH
-export PATH=~/proj/misc/bin:~/proj/jobman/bin:$PATH
+export PATH=~/proj/misc/bin:~/proj/jobman/bin:/usr/local/cuda/bin:$PATH
 export BYOBU_PREFIX=$(brew --prefix)
+
+export LD_LIBRARY_PATH=/usr/local/cuda-6.0/targets/x86_64-linux/lib
 
 #export PYENV_ROOT=/usr/local/opt/pyenv  
 #eval "$(pyenv init -)"

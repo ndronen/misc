@@ -1,8 +1,11 @@
 # For R
 export COLUMNS
 
-# If Mac
-source /usr/local/opt/autoenv/activate.sh
+if [ ! -d ~/.autoenv ]
+then
+    git clone git://github.com/kennethreitz/autoenv.git ~/.autoenv
+fi
+source ~/.autoenv/activate.sh
 
 # If running interactively, then:
 if [ "$PS1" ]
