@@ -21,7 +21,7 @@ export PYLEARN2_DATA_PATH=~/proj/pylearn2-data
 export R_HISTFILE=~/.Rhistory
 
 export PATH=/usr/local/bin:~/proj/pylearn2/pylearn2/scripts:$PATH
-export PATH=~/proj/misc/bin:~/proj/jobman/bin:$PATH
+export PATH=~/proj/misc/bin:~/proj/jobman/bin:~/proj/Theano/bin:$PATH
 export BYOBU_PREFIX=$(brew --prefix)
 
 #export PYENV_ROOT=/usr/local/opt/pyenv  
