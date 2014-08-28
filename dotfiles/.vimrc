@@ -2,6 +2,7 @@ set softtabstop=4
 set shiftwidth=4
 set expandtab
 set ts=4
+set history=1000
 
 " execute pathogen#infect()
 
@@ -11,5 +12,7 @@ syntax on
 
 set vb t_vb=
 
-set bg=dark
+set bg=light
 hi clear
+
+
