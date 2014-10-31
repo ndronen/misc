@@ -8,7 +8,7 @@ export LESS="-erX"
 export TZ=America/Denver
 
 export PERL5LIB=~/proj
-export PYTHONPATH=~/proj/Theano:~/proj/pylearn2:~/proj/Python/trunk/pykt:~/proj/jobman:~/proj/pylearnutils:~/proj/Python/trunk/pykt:~/proj/GroundHog
+export PYTHONPATH=~/proj/Theano:~/proj/pylearn2:~/proj/Python/trunk/pykt:~/proj/jobman:~/proj/pylearnutils:~/proj/Python/trunk/pykt:~/proj/GroundHog:~/proj/pywsd
 
 export R_HISTFILE=~/.Rhistory
 
