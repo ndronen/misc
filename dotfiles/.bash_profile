@@ -20,8 +20,9 @@ export PYLEARN2_DATA_PATH=~/proj/pylearn2-data
 
 export R_HISTFILE=~/.Rhistory
 
-export PATH=/usr/local/bin:~/proj/pylearn2/pylearn2/scripts:$PATH
-export PATH=~/proj/misc/bin:~/proj/jobman/bin:~/proj/Theano/bin:$PATH
+export PATH=/usr/local/bin:~/proj/pylearn2/pylearn2/scripts:$PATH:/usr/local/cuda-6.5/bin
+export PATH=~/proj/misc/bin:~/proj/jobman/bin:~/proj/Theano/bin:$PATH:~/proj/pylearnutils/pylearnutils/bin
+export LD_LIBRARY_PATH=/usr/local/cuda-6.5/lib64
 export BYOBU_PREFIX=$(brew --prefix)
 
 #export PYENV_ROOT=/usr/local/opt/pyenv  
