@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]
+then
+    echo "usage: remove-non-ascii FILE FILE ..." >&2
+    exit 1
+fi
+
+for file in $@
+do
+    perl -i.bak -pe 's/[^[:ascii:]]//g' $file
+done
