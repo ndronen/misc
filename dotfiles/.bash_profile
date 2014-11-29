@@ -18,6 +18,10 @@ export PYTHONPATH=~/proj/Theano:~/proj/pylearn2:~/proj/Python/trunk/pykt:~/proj/
 
 export PYLEARN2_DATA_PATH=~/proj/pylearn2-data
 
+# For Pyro4 and gensim's distributed LSI.
+export PYRO_SERIALIZERS_ACCEPTED=pickle
+export PYRO_SERIALIZER=pickle
+
 export R_HISTFILE=~/.Rhistory
 
 export PATH=$HOME/bin:/usr/local/bin:~/proj/pylearn2/pylearn2/scripts:$PATH:/usr/local/cuda-6.5/bin
