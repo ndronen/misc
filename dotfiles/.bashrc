@@ -28,6 +28,11 @@ then
         alias seq=gseq
     fi
 
+    if [ ! -z $(which hub 2>/dev/null) ]
+    then
+        alias git=hub
+    fi
+
     # Misc. aliases
     alias agent="exec ssh-agent sh -c 'ssh-add && bash --login'"
     if [ ! -z $(which xdg-open 2>/dev/null) ]
