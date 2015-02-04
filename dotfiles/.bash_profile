@@ -14,7 +14,7 @@ export MAVEN_HOME=/opt/apache-maven
 export M2_HOME=$MAVEN_HOME
 export PERL5LIB=~/lib/perl/lib/perl5/5.8.2/i686-linux:~/lib/perl/lib/perl5/site_perl/5.8.2:~/lib/perl/lib/perl5/site_perl/5.8.2/i686-linux:${LSA:-/export/home/lsa/2.9}
 
-export PYTHONPATH=~/proj/Theano:~/proj/pylearn2:~/proj/Python/trunk/pykt:~/proj/jobman:~/proj/pylearnutils:~/proj/Python/trunk/pykt:~/proj/GroundHog:~/proj/Metrics/Python:~/proj/Metrics/Python/ml_metrics/
+export PYTHONPATH=~/proj/Theano:~/proj/pylearn2:~/proj/Python/trunk/pykt:~/proj/jobman:~/proj/pylearnutils:~/proj/Python/trunk/pykt:~/proj/GroundHog:~/proj/Metrics/Python:~/proj/Metrics/Python
 
 export PYLEARN2_DATA_PATH=~/proj/pylearn2-data
 
