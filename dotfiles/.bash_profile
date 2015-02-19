@@ -24,7 +24,7 @@ export PYRO_SERIALIZER=pickle
 
 export R_HISTFILE=~/.Rhistory
 
-export PATH=$HOME/bin:/usr/local/bin:~/proj/pylearn2/pylearn2/scripts:$PATH:/usr/local/cuda-6.5/bin:~/torch/bin
+export PATH=$HOME/bin:/usr/local/bin:/usr/local/sbin:~/proj/pylearn2/pylearn2/scripts:$PATH:/usr/local/cuda-6.5/bin:~/torch/bin
 export PATH=~/proj/misc/bin:~/proj/jobman/bin:~/proj/Theano/bin:$PATH:~/proj/pylearnutils/pylearnutils/bin
 export LD_LIBRARY_PATH=/usr/local/cuda-6.5/lib64:~/torch/lib
 export BYOBU_PREFIX=$(brew --prefix)
