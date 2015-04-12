@@ -8,5 +8,5 @@ fi
 
 for file in $@
 do
-    perl -i.nonascii -pe 's/[^[:ascii:]]//g' $file
+    perl -i.nonascii -pe 's/[^[:ascii:]]/ /g' $file
 done
