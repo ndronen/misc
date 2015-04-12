@@ -63,8 +63,7 @@ class TestNetwork(unittest.TestCase):
         b = np.ones(shape=1)
         layer = Layer(W, b, Sigmoid())
         x = np.random.normal(size=(2, 1))
-        print(layer)
-        print(layer.forward(x))
+        layer.forward(x)
 
 if __name__ == '__main__':
     unittest.main()
