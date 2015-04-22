@@ -1,0 +1,3 @@
+#!/bin/bash -xe
+
+# TODO: make ~/.bash_profile, etc, links to ~/proj/misc/dotfiles/.bash_profile.
