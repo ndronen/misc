@@ -29,10 +29,6 @@ cmd:text('Options:')
 -- global:
 cmd:option('-seed', 1, 'fixed input seed for repeatable experiments')
 cmd:option('-threads', 2, 'number of threads')
--- data:
-cmd:option('-size', 'full', 'how many samples do we load: small | full | extra')
--- model:
-cmd:option('-model', 'convnet', 'type of model to construct: linear | mlp | convnet')
 -- loss:
 cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
 -- training:
@@ -46,6 +42,10 @@ cmd:option('-momentum', 0, 'momentum (SGD only)')
 cmd:option('-t0', 1, 'start averaging at t0 (ASGD only), in nb of epochs')
 cmd:option('-maxIter', 2, 'maximum nb of iterations for CG and LBFGS')
 cmd:option('-type', 'double', 'type: double | float | cuda')
+cmd:option('-fullyConnectedLayers', 1, 'number of extra fully-connected layers after convolutional layers')
+cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
+cmd:option('-padding', 2, 'the number of leading and trailing zero-padding entries per sentence')
+cmd:option('-size', 'all', 'how many samples do we load for training: all | smakll')
 cmd:text()
 opt = cmd:parse(arg or {})
 
@@ -61,8 +61,6 @@ end
 torch.setnumthreads(opt.threads)
 torch.manualSeed(opt.seed)
 
-opt.loss = 'nll'
-
 ----------------------------------------------------------------------
 print '==> executing all'
 
@@ -71,6 +69,9 @@ dofile '2_model.lua'
 dofile '3_loss.lua'
 dofile '4_train.lua'
 dofile '5_test.lua'
+
+print '==> here is the model:'
+print(model)
 
 ----------------------------------------------------------------------
 print '==> training!'

@@ -28,8 +28,12 @@ if not opt then
    cmd:text('SVHN Dataset Preprocessing')
    cmd:text()
    cmd:text('Options:')
-   cmd:option('-size', 'small', 'how many samples do we load: small | full | extra')
+   cmd:option('-size', 'all', 'how many samples do we load: all | 20k | 1k')
    cmd:option('-visualize', true, 'visualize input data and weights during training')
+   cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
+   cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
+   cmd:option('-padding', 2, 'the number of leading and trailing zero-padding entries per sentence')
+
    cmd:text()
    opt = cmd:parse(arg or {})
 end
@@ -63,96 +67,111 @@ print '==> loading dataset'
 -- dim indexes the color channels (RGB), and the last two dims index the
 -- height and width of the samples.
 
-trainHdfile = hdf5.open('okanohara-train-20k.h5', 'r')
+local trainHdfile = nil
+
+if opt.size == '1k' then
+  trainHdfile = hdf5.open('okanohara-train-1k.h5', 'r')
+elseif opt.size == '20k' then
+  trainHdfile = hdf5.open('okanohara-train-20k.h5', 'r')
+else
+  trainHdfile = hdf5.open('okanohara-train.h5', 'r')
+end
 trainDatasets = trainHdfile:read():all()
 
+--[[
 print 'X'
 print(trainDatasets.X:size())
+print(trainDatasets.X:select(1,1))
 print 'y'
 print(trainDatasets.y:size())
+print(trainDatasets.y[1])
+--]]
 
--- trainDatasets.y = trainDatasets.y:resize(trainDatasets.y:size(1), 1)
+-- Load the test data.
+testHdfile = hdf5.open('okanohara-test.h5', 'r')
+testDatasets = testHdfile:read():all()
 
--- trainDatasets.X = torch.Tensor(trainDatasets.X)
--- trainDatasets.y = torch.Tensor(trainDatasets.y)
+--[[
+print 'X'
+print(testDatasets.X:size())
+print(testDatasets.X:select(1,1))
+print 'y'
+print(testDatasets.y:size())
+print(testDatasets.y[1])
+--]]
+
+if opt.loss == 'mse' then
+  --
+  -- Input labels are 0 for negative example, 1 for positive example.
+  -- Transform these to (max length-num words) for negative examples and
+  -- (max length+num words) for positive examples.  This should cause the
+  -- model to try to place extremely short positive and negative examples
+  -- near one another and to place extremely long positive and negative
+  -- examples far from one another.
+  --
+  local convert_to_regression_targets = function(dataset, unk_or_zero_word_index, padding)
+    -- Make a binary mask of the unknown or zero-padding words in each sentence.
+    --[[
+    print('dataset.X')
+    print(dataset.X:type())
+    print(dataset.X:size())
+    print('unk_or_zero_word_index')
+    print(unk_or_zero_word_index)
+    --]]
+    unk_or_zero_mask = dataset.X:eq(unk_or_zero_word_index):int()
+
+    -- Count the unknown and zero-padding words in each sentence by
+    -- summing along the rows, then subtract the number of zero-padding
+    -- words, since they don't add to the length of the sentence.
+    num_unk_or_zero = torch.sum(unk_or_zero_mask, 2) - 2*padding
+    num_unk_or_zero = num_unk_or_zero:reshape(num_unk_or_zero:nElement())
+    num_unk_or_zero[torch.lt(num_unk_or_zero, 1)] = 1
+    --[[
+    print(num_unk_or_zero[torch.gt(num_unk_or_zero, 40)])
+    print('num_unk_or_zero')
+    print(num_unk_or_zero:size())
+    --]]
+
+    -- Make a mask of the two types of examples and use them
+    -- to update the regression targets.
+    neg_mask = dataset.y:eq(1)
+    max_length = dataset.X:size(2) - 2*padding - 1
+
+    -- A conditional function:
+    --   target = max_length - length if negative example
+    --   target = max_length + length if positive example
+    reg_targets = num_unk_or_zero
+    reg_targets[neg_mask] = -reg_targets[neg_mask]
+    reg_targets = reg_targets + max_length
+
+    -- Rescale to a range of about 1-10.
+    reg_targets = torch.round((reg_targets:float()/8.5))+1
+    return reg_targets
+  end
+
+  print '==> converting training targets for mse loss'
+  trainDatasets.y = convert_to_regression_targets(
+      trainDatasets, opt.zeroVector, opt.padding)
+  print '==> converting test targets for mse loss'
+  testDatasets.y = convert_to_regression_targets(
+      testDatasets, opt.zeroVector, opt.padding)
+end
 
 trsize = trainDatasets.y:size(1)
+tesize = testDatasets.y:size(1)
+--[[
 print 'trsize'
 print(trsize)
+--]]
 
 trainData = {
    data = trainDatasets.X,
-   -- labels = datasets.y[1],
-   labels = trainDatasets.y + 1,
+   labels = trainDatasets.y,
    size = function() return trsize end
 }
 
--- If extra data is used, we load the extra file, and then
--- concatenate the two training sets.
-
--- Finally we load the test data.
-testHdfile = hdf5.open('okanohara-test.h5', 'r')
-testDatasets = testHdfile:read():all()
-X = testDatasets.X
-y = testDatasets.y + 1
-
 testData = {
    data = testDatasets.X,
-   -- labels = datasets.y[1],
    labels = testDatasets.y,
-   size = function() return testDatasets.y:size(1) end
+   size = function() return tesize end
 } 
-
-print '==> data'
-print(trainData.data:size())
-print '==> labels'
-print(trainData.labels:size())
-print '==> trsize'
-print(trainData:size())
-
--- The example data is loaded and transformed into two objects:
--- ==> data    
--- 
---  73257
---      3
---     32
---     32
--- [torch.LongStorage of size 4]
--- 
--- ==> labels  
--- 
---  73257
--- [torch.LongStorage of size 1]
--- 
--- Since I'll be using a lookup table, I need to transform the Okanohara data into something like:
--- 
---    250k
---      45
--- [torch.LongStorage of size 2]
--- 
--- The label can remain a [torch.LongStorage of size 1].
-
-----------------------------------------------------------------------
-print '==> preprocessing data'
-
--- Preprocessing requires a floating point representation (the original
--- data is stored on bytes). Types can be easily converted in Torch, 
--- in general by doing: dst = src:type('torch.TypeTensor'), 
--- where Type=='Float','Double','Byte','Int',... Shortcuts are provided
--- for simplicity (float(),double(),cuda(),...):
-
--- trainData.data = trainData.data:float()
--- testData.data = testData.data:float()
-
--- We now preprocess the data. Preprocessing is crucial
--- when applying pretty much any kind of machine learning algorithm.
-
--- For natural images, we use several intuitive tricks:
---   + images are mapped into YUV space, to separate luminance information
---     from color information
---   + the luminance channel (Y) is locally normalized, using a contrastive
---     normalization operator: for each neighborhood, defined by a Gaussian
---     kernel, the mean is suppressed, and the standard deviation is normalized
---     to one.
---   + color channels are normalized globally, across the entire dataset;
---     as a result, each color component has 0-mean and 1-norm across the dataset.

@@ -40,6 +40,15 @@ function test()
 
       -- test sample
       local pred = model:forward(input)
+      if opt.loss == 'mse' then
+        if pred[1] > max_class then
+          pred[1] = max_class
+        elseif pred[1] < min_class then
+          pred[1] = min_class
+        end
+        pred = torch.round(pred)[1]
+      end
+      -- print('pred ' .. pred .. ' target ' .. target)
       confusion:add(pred, target)
    end
 

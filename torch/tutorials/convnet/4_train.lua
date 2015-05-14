@@ -51,10 +51,15 @@ end
 print '==> defining some tools'
 
 -- classes
-classes = {'1','2'}
+local classes = {}
+min_class = 1
+max_class = torch.max(trainData.labels)
+for i=1,max_class do 
+  table.insert(classes, tostring(i))
+end
 
 -- This matrix records the current confusion across classes
-confusion = optim.ConfusionMatrix(classes)
+confusion = optim.ConfusionMatrix(max_class)
 
 -- Log results to files
 trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
@@ -162,21 +167,69 @@ function train()
                           -- print 'inputs[i]'
                           -- print(inputs[i])
                           local output = model:forward(inputs[i])
-                          -- print 'output'
-                          -- print(output)
-                          -- print 'targets'
-                          -- print(targets[i])
+                          --[[
+                          print 'output'
+                          print(output)
+                          print 'targets'
+                          print(targets[i])
+                          --]]
 
-                          local err = criterion:forward(output, targets[i])
+                          --print('output')
+                          --print(output)
+                          -- print('targets[i]')
+                          -- print(targets[i])
+                          --print('targets')
+                          --print(targets)
+                          local targs = nil
+                          if opt.loss == 'mse' then
+                            if opt.type == 'cuda' then
+                              targs = torch.CudaTensor(1)
+                            else
+                              targs = torch.Tensor(1)
+                            end
+                            targs[1] = targets[i]
+                          else
+                            targs = targets[i]
+                          end
+                          --print('targs')
+                          --print(targs)
+                          --
+                            
+                          -- local err = criterion:forward(output, targets[i])
+                          local err = criterion:forward(output, targs)
                           f = f + err
 
                           -- estimate df/dW
-                          local df_do = criterion:backward(output, targets[i])
+                          -- local df_do = criterion:backward(output, targets[i])
+                          local df_do = criterion:backward(output, targs)
                           model:backward(inputs[i], df_do)
 
                           -- update confusion
-                          confusion:add(output, targets[i])
-                       end
+                          -- confusion:add(output, targets[i])
+                          --[[
+                          print('output (original)')
+                          print(output)
+                          --]]
+                          if opt.loss == 'mse' then
+                            if output[1] > max_class then
+                              output[1] = max_class
+                            elseif output[1] < 1 then
+                              output[1] = 1
+                            end
+                            output = torch.round(output)[1]
+                          end
+                          --[[
+                          print('output (modified)')
+                          print(output)
+                          print('targs')
+                          print(targs)
+                          --]]
+                          if torch.isTensor(targs) then
+                            confusion:add(output, targs[1])
+                          else
+                            confusion:add(output, targs)
+                          end
+                        end
 
                        -- normalize gradients and f(X)
                        gradParameters:div(#inputs)

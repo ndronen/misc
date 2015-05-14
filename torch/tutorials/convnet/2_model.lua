@@ -20,123 +20,96 @@ require 'nn'      -- provides all sorts of trainable modules/layers
 ----------------------------------------------------------------------
 -- parse command line arguments
 if not opt then
-   print '==> processing options'
-   cmd = torch.CmdLine()
-   cmd:text()
-   cmd:text('SVHN Model Definition')
-   cmd:text()
-   cmd:text('Options:')
-   cmd:option('-model', 'convnet', 'type of model to construct: linear | mlp | convnet')
-   cmd:option('-visualize', true, 'visualize input data and weights during training')
-   cmd:text()
-   opt = cmd:parse(arg or {})
+  print '==> processing options'
+  cmd = torch.CmdLine()
+  cmd:text()
+  cmd:text('SVHN Model Definition')
+  cmd:text()
+  cmd:text('Options:')
+  cmd:option('-visualize', true, 'visualize input data and weights during training')
+  cmd:option('-fullyConnectedLayers', 1, 'number of extra fully-connected layers after convolutional layers')
+  cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
+  cmd:text()
+  opt = cmd:parse(arg or {})
 end
 
 ----------------------------------------------------------------------
 print '==> define parameters'
 
 -- 2-class problem
-noutputs = 2
+if opt.loss == 'mse' then
+  noutputs = 1
+  nonlinearity = nn.Tanh
+else
+  noutputs = torch.max(trainData.labels)
+  nonlinearity = nn.ReLU
+end
 
--- input dimensions
--- nfeats = 3
--- width = 32
--- height = 32
--- ninputs = nfeats*width*height
-
--- number of hidden units (for MLP only):
--- nhiddens = ninputs / 2
-
--- hidden units, filter sizes (for ConvNet only):
--- nstates = {64,64,128}
--- filtsize = 5
--- poolsize = 2
-normkernel = image.gaussian1D(7)
-
+--[[
 print '==> sentence length'
 print(trainData.data:size(2))
+--]]
 
 nWords = 107701
 nWordDims = 50
 inputFrameSize = nWordDims; -- dimensionality of one sequence element 
-outputFrameSize = 13;       -- number of derived features for one sequence element
+outputFrameSize = 500;       -- number of derived features for one sequence element
 kw = 3;          -- kernel spans three input elements
 dw = 1;          -- we step once and go on to the next sequence element
 
 ----------------------------------------------------------------------
 print '==> construct model'
 
-if opt.type == 'cuda' then
-  -- a typical modern convolution network (conv+relu+pool)
-  model = nn.Sequential()
+-- a typical modern convolution network (conv+relu+pool)
+model = nn.Sequential()
 
-  -- stage 1: lookup table
-  model:add(nn.LookupTable(nWords, nWordDims))
+-- stage 1: lookup table
+model:add(nn.LookupTable(nWords, nWordDims))
 
-  -- stage 2: filter bank -> squashing -> pooling
+--[[
+print '==> nn.TemporalConvolution'
+print 'inputFrameSize'
+print(inputFrameSize)
+print 'outputFrameSize'
+print(outputFrameSize)
+print 'kw'
+print(kw)
+print 'dw'
+print(dw)
+--]]
 
-  model:add(nn.TemporalConvolution(inputFrameSize, outputFrameSize, kw, dw))
+-- stage 2: filter bank -> squashing -> pooling
+model:add(nn.TemporalConvolution(inputFrameSize, outputFrameSize, kw, dw))
+model:add(nn.ReLU())
+-- model:add(nonlinearity())
+model:add(nn.TemporalMaxPooling(trainData.data:size(2)-2))
+model:add(nn.Dropout(0.5))
+model:add(nn.View(outputFrameSize))
+
+-- stage 3: fully-connected layers
+for i = 1,opt.fullyConnectedLayers do
+  local nunits = 0
+  if i == 1 then
+    nunits = outputFrameSize
+  else
+    nunits = 50
+  end
+  model:add(nn.Linear(nunits, 50))
   model:add(nn.ReLU())
-  model:add(nn.TemporalMaxPooling(trainData.data:size(2)-2))
-
-  -- stage 3: linear output
-  model:add(nn.Linear(outputFrameSize, noutputs))
-
-  -- stage 3 : standard 2-layer neural network
-  -- model:add(nn.View(nstates[2]*filtsize*filtsize))
-  -- model:add(nn.Dropout(0.5))
-  -- model:add(nn.Linear(nstates[2]*filtsize*filtsize, nstates[3]))
-  -- model:add(nn.ReLU())
-  -- model:add(nn.Linear(nstates[3], noutputs))
-
-else
-  -- a typical convolutional network, with locally-normalized hidden
-  -- units, and L2-pooling
-
-  -- Note: the architecture of this convnet is loosely based on Pierre Sermanet's
-  -- work on this dataset (http://arxiv.org/abs/1204.3968). In particular
-  -- the use of LP-pooling (with P=2) has a very positive impact on
-  -- generalization. Normalization is not done exactly as proposed in
-  -- the paper, and low-level (first layer) features are not fed to
-  -- the classifier.
-
-  model = nn.Sequential()
-
-  -- stage 1: lookup table
-  model:add(nn.LookupTable(nWords, nWordDims))
-
-  print '==> nn.TemporalConvolution'
-  print 'inputFrameSize'
-  print(inputFrameSize)
-  print 'outputFrameSize'
-  print(outputFrameSize)
-  print 'kw'
-  print(kw)
-  print 'dw'
-  print(dw)
-
-  -- stage 2: filter bank -> squashing -> pooling
-  model:add(nn.TemporalConvolution(inputFrameSize, outputFrameSize, kw, dw))
-  model:add(nn.ReLU())
-  model:add(nn.TemporalMaxPooling(trainData.data:size(2)-2))
-
-  -- stage 3: linear output
-  model:add(nn.View(outputFrameSize))
-  model:add(nn.Linear(outputFrameSize, noutputs))
-
-  -- stage 3 : standard 2-layer neural network
-  -- model:add(nn.View(nstates[2]*filtsize*filtsize))
-  -- model:add(nn.Dropout(0.5))
-  -- model:add(nn.Linear(nstates[2]*filtsize*filtsize, nstates[3]))
-  -- model:add(nn.ReLU())
-  -- model:add(nn.Linear(nstates[3], noutputs))
+  -- model:add(nonlinearity())
+  model:add(nn.Dropout(0.5))
 end
 
-----------------------------------------------------------------------
-print '==> here is the model:'
-print(model)
+-- stage 4: output layer (before cost)
+if opt.fullyConnectedLayers < 1 then
+  model:add(nn.Linear(outputFrameSize, noutputs))
+else
+  model:add(nn.Linear(50, noutputs))
+end
 
-----------------------------------------------------------------------
+-- print '==> here is the model:'
+-- print(model)
+
 -- Visualization is quite easy, using itorch.image().
 
 if opt.visualize then

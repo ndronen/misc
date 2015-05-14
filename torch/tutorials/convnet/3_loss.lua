@@ -28,70 +28,72 @@ if not opt then
    model = nn.Sequential()
 end
 
--- 2-class problem
-noutputs = 2
 
 ----------------------------------------------------------------------
 print '==> define loss'
 
 if opt.loss == 'margin' then
 
-   -- This loss takes a vector of classes, and the index of
-   -- the grountruth class as arguments. It is an SVM-like loss
-   -- with a default margin of 1.
-
-   criterion = nn.MultiMarginCriterion()
+  nclasses = 2
+  -- This loss takes a vector of classes, and the index of
+  -- the grountruth class as arguments. It is an SVM-like loss
+  -- with a default margin of 1.
+  criterion = nn.MultiMarginCriterion()
 
 elseif opt.loss == 'nll' then
 
-   -- This loss requires the outputs of the trainable model to
-   -- be properly normalized log-probabilities, which can be
-   -- achieved using a softmax function
+  nclasses = 2
+  -- This loss takes a vector of classes, and the index of
+  -- This loss requires the outputs of the trainable model to
+  -- be properly normalized log-probabilities, which can be
+  -- achieved using a softmax function
 
-   model:add(nn.LogSoftMax())
+  model:add(nn.LogSoftMax())
+  -- The loss works like the MultiMarginCriterion: it takes
+  -- a vector of classes, and the index of the grountruth class
+  -- as arguments.
 
-   -- The loss works like the MultiMarginCriterion: it takes
-   -- a vector of classes, and the index of the grountruth class
-   -- as arguments.
-
-   criterion = nn.ClassNLLCriterion()
+  criterion = nn.ClassNLLCriterion()
 
 elseif opt.loss == 'mse' then
+  -- nclasses = 80
 
-   -- for MSE, we add a tanh, to restrict the model's output
-   model:add(nn.Tanh())
+  -- for MSE, we add a tanh, to restrict the model's output
+  -- model:add(nn.Tanh())
 
-   -- The mean-square error is not recommended for classification
-   -- tasks, as it typically tries to do too much, by exactly modeling
-   -- the 1-of-N distribution. For the sake of showing more examples,
-   -- we still provide it here:
+  -- The mean-square error is not recommended for classification
+  -- tasks, as it typically tries to do too much, by exactly modeling
+  -- the 1-of-N distribution. For the sake of showing more examples,
+  -- we still provide it here:
 
-   criterion = nn.MSECriterion()
-   criterion.sizeAverage = false
+  criterion = nn.MSECriterion()
+  criterion.sizeAverage = false
 
-   -- Compared to the other losses, the MSE criterion needs a distribution
-   -- as a target, instead of an index. Indeed, it is a regression loss!
-   -- So we need to transform the entire label vectors:
+  -- Compared to the other losses, the MSE criterion needs a distribution
+  -- as a target, instead of an index. Indeed, it is a regression loss!
+  -- So we need to transform the entire label vectors:
 
-   if trainData then
-      -- convert training labels:
-      local trsize = (#trainData.labels)[1]
-      local trlabels = torch.Tensor( trsize, noutputs )
-      trlabels:fill(-1)
-      for i = 1,trsize do
-         trlabels[{ i,trainData.labels[i] }] = 1
-      end
-      trainData.labels = trlabels
+  --[[
+  if trainData then
+    -- convert training labels:
+    local trsize = (#trainData.labels)[1]
+    local trlabels = torch.Tensor( trsize, nclasses )
+    trlabels:fill(-1)
+    for i = 1,trsize do
+      trlabels[{ i,trainData.labels[i] }] = 1
+    end
+    trainData.labels = trlabels
 
-      -- convert test labels
-      local tesize = (#testData.labels)[1]
-      local telabels = torch.Tensor( tesize, noutputs )
-      telabels:fill(-1)
-      for i = 1,tesize do
-         telabels[{ i,testData.labels[i] }] = 1
-      end
-      testData.labels = telabels
-   end
+    -- convert test labels
+    local tesize = (#testData.labels)[1]
+    local telabels = torch.Tensor( tesize, nclasses )
+    telabels:fill(-1)
+    for i = 1,tesize do
+      telabels[{ i,testData.labels[i] }] = 1
+    end
+    testData.labels = telabels
+  end
+  ]]--
 
 else
 
