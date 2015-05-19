@@ -103,9 +103,9 @@ for i = 1,opt.fullyConnectedLayers do
   if i == 1 then
     nunits = outputFrameSize
   else
-    nunits = 50
+    nunits = 500
   end
-  model:add(nn.Linear(nunits, 50))
+  model:add(nn.Linear(nunits, 500))
   model:add(nn.ReLU())
   model:add(nn.Dropout(0.5))
 end
@@ -114,7 +114,7 @@ end
 if opt.fullyConnectedLayers < 1 then
   model:add(nn.Linear(outputFrameSize, noutputs))
 else
-  model:add(nn.Linear(50, noutputs))
+  model:add(nn.Linear(500, noutputs))
 end
 
 -- print '==> here is the model:'
