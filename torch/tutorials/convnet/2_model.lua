@@ -13,9 +13,13 @@
 -- Clement Farabet
 ----------------------------------------------------------------------
 
-require 'torch'   -- torch
-require 'image'   -- for image transforms
-require 'nn'      -- provides all sorts of trainable modules/layers
+-- require 'torch'   -- torch
+-- require 'nn'      -- provides all sorts of trainable modules/layers
+
+require 'cutorch'
+require 'fbcunn'
+require('fb.luaunit')
+local torch = require('fbtorch')
 
 ----------------------------------------------------------------------
 -- parse command line arguments
@@ -27,6 +31,7 @@ if not opt then
   cmd:text()
   cmd:text('Options:')
   cmd:option('-visualize', true, 'visualize input data and weights during training')
+  cmd:option('-type', 'double', 'type: double | float | cuda')
   cmd:option('-fullyConnectedLayers', 1, 'number of extra fully-connected layers after convolutional layers')
   cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
   cmd:text()
@@ -39,10 +44,8 @@ print '==> define parameters'
 -- 2-class problem
 if opt.loss == 'mse' then
   noutputs = 1
-  nonlinearity = nn.Tanh
 else
   noutputs = torch.max(trainData.labels)
-  nonlinearity = nn.ReLU
 end
 
 --[[
@@ -52,6 +55,7 @@ print(trainData.data:size(2))
 
 nWords = 107701
 nWordDims = 50
+
 inputFrameSize = nWordDims; -- dimensionality of one sequence element 
 outputFrameSize = 500;       -- number of derived features for one sequence element
 kw = 3;          -- kernel spans three input elements
@@ -64,7 +68,11 @@ print '==> construct model'
 model = nn.Sequential()
 
 -- stage 1: lookup table
-model:add(nn.LookupTable(nWords, nWordDims))
+if opt.type == 'cuda' then
+  model:add(nn.LookupTableGPU(nWords, nWordDims, true))
+else
+  model:add(nn.LookupTable(nWords, nWordDims))
+end
 
 --[[
 print '==> nn.TemporalConvolution'
@@ -79,9 +87,12 @@ print(dw)
 --]]
 
 -- stage 2: filter bank -> squashing -> pooling
-model:add(nn.TemporalConvolution(inputFrameSize, outputFrameSize, kw, dw))
+-- if opt.type == 'cuda' then
+--  model:add(nn.TemporalConvolutionFB(inputFrameSize, outputFrameSize, kw, dw))
+--else
+  model:add(nn.TemporalConvolution(inputFrameSize, outputFrameSize, kw, dw))
+--end
 model:add(nn.ReLU())
--- model:add(nonlinearity())
 model:add(nn.TemporalMaxPooling(trainData.data:size(2)-2))
 model:add(nn.Dropout(0.5))
 model:add(nn.View(outputFrameSize))
@@ -96,7 +107,6 @@ for i = 1,opt.fullyConnectedLayers do
   end
   model:add(nn.Linear(nunits, 50))
   model:add(nn.ReLU())
-  -- model:add(nonlinearity())
   model:add(nn.Dropout(0.5))
 end
 
