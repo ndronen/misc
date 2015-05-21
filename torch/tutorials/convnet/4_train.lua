@@ -13,9 +13,14 @@
 -- Clement Farabet
 ----------------------------------------------------------------------
 
-require 'torch'   -- torch
+-- require 'torch'   -- torch
 require 'xlua'    -- xlua provides useful tools, like progress bars
 require 'optim'   -- an optimization package, for online and batch methods
+
+require 'cutorch'
+require 'fbcunn'
+require('fb.luaunit')
+local torch = require('fbtorch')
 
 ----------------------------------------------------------------------
 -- parse command line arguments
@@ -164,9 +169,14 @@ function train()
                        -- evaluate function for complete mini batch
                        for i = 1,#inputs do
                           -- estimate f
-                          -- print 'inputs[i]'
+                          -- print('i')
+                          -- print(i)
+                          -- print('inputs')
+                          -- print(inputs)
                           -- print(inputs[i])
-                          local output = model:forward(inputs[i])
+                          input = inputs[i]:clone():cuda()
+                          -- local output = model:forward(inputs[i])
+                          local output = model:forward(input)
                           --[[
                           print 'output'
                           print(output)
@@ -202,7 +212,9 @@ function train()
                           -- estimate df/dW
                           -- local df_do = criterion:backward(output, targets[i])
                           local df_do = criterion:backward(output, targs)
-                          model:backward(inputs[i], df_do)
+                          -- model:backward(inputs[i], df_do)
+                          -- model:backward(inputs[i], df_do)
+                          model:backward(input, df_do)
 
                           -- update confusion
                           -- confusion:add(output, targets[i])
@@ -261,6 +273,8 @@ function train()
       trainLogger:style{['% mean class accuracy (train set)'] = '-'}
       trainLogger:plot()
    end
+
+   -- TODO: log summary statistic of model weights.
 
    -- save/log current net
    local filename = paths.concat(opt.save, 'model.net')

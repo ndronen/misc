@@ -16,7 +16,6 @@
 
 require 'torch'   -- torch
 require 'image'   -- for color transforms
-require 'nn'      -- provides a normalization operator
 require 'hdf5'
 
 ----------------------------------------------------------------------
@@ -33,7 +32,7 @@ if not opt then
    cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
    cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
    cmd:option('-padding', 2, 'the number of leading and trailing zero-padding entries per sentence')
-
+   cmd:option('-type', 'double', 'type: double | float | cuda')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
@@ -175,3 +174,10 @@ testData = {
    labels = testDatasets.y,
    size = function() return tesize end
 } 
+
+if opt.type == 'cuda' then
+  trainData.data = trainData.data:clone():cuda()
+  trainData.labels = trainData.labels:clone():cuda()
+  testData.data = testData.data:clone():cuda()
+  testData.labels = testData.labels:clone():cuda()
+end

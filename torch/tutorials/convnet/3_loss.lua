@@ -8,8 +8,13 @@
 -- Clement Farabet
 ----------------------------------------------------------------------
 
-require 'torch'   -- torch
-require 'nn'      -- provides all sorts of loss functions
+-- require 'torch'   -- torch
+-- require 'nn'      -- provides all sorts of loss functions
+
+require 'cutorch'
+require 'fbcunn'
+require('fb.luaunit')
+local torch = require('fbtorch')
 
 ----------------------------------------------------------------------
 -- parse command line arguments

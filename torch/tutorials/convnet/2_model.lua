@@ -32,8 +32,10 @@ if not opt then
   cmd:text('Options:')
   cmd:option('-visualize', true, 'visualize input data and weights during training')
   cmd:option('-type', 'double', 'type: double | float | cuda')
-  cmd:option('-fullyConnectedLayers', 1, 'number of extra fully-connected layers after convolutional layers')
   cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
+  cmd:option('-kernelWidth', 3, 'width of kernels: 2 or greater')
+  cmd:option('-nKernels', 500, 'number of kernels: 2 or greater')
+  cmd:option('-nFullyConnectedLayers', 1, 'number of extra fully-connected layers after convolutional layers')
   cmd:text()
   opt = cmd:parse(arg or {})
 end
@@ -48,21 +50,17 @@ else
   noutputs = torch.max(trainData.labels)
 end
 
---[[
-print '==> sentence length'
-print(trainData.data:size(2))
---]]
-
 nWords = 107701
 nWordDims = 50
 
 inputFrameSize = nWordDims; -- dimensionality of one sequence element 
-outputFrameSize = 500;       -- number of derived features for one sequence element
 kw = 3;          -- kernel spans three input elements
 dw = 1;          -- we step once and go on to the next sequence element
 
 ----------------------------------------------------------------------
 print '==> construct model'
+-- K for k-max pooling
+k = 1
 
 -- a typical modern convolution network (conv+relu+pool)
 model = nn.Sequential()
@@ -74,64 +72,47 @@ else
   model:add(nn.LookupTable(nWords, nWordDims))
 end
 
---[[
-print '==> nn.TemporalConvolution'
-print 'inputFrameSize'
-print(inputFrameSize)
-print 'outputFrameSize'
-print(outputFrameSize)
-print 'kw'
-print(kw)
-print 'dw'
-print(dw)
---]]
-
--- stage 2: filter bank -> squashing -> pooling
 -- if opt.type == 'cuda' then
---  model:add(nn.TemporalConvolutionFB(inputFrameSize, outputFrameSize, kw, dw))
---else
-  model:add(nn.TemporalConvolution(inputFrameSize, outputFrameSize, kw, dw))
---end
+--  model:add(nn.TemporalConvolutionFB(inputFrameSize, opt.nKernels, kw, dw))
+-- else
+conv = nn.TemporalConvolution(inputFrameSize, opt.nKernels, kw, dw)
+-- conv.bias = torch.ones(conv.bias:size())
+model:add(conv)
+-- end
 model:add(nn.ReLU())
-model:add(nn.TemporalMaxPooling(trainData.data:size(2)-2))
+
+if k == 1 then
+  model:add(nn.TemporalMaxPooling(trainData.data:size(2)-2))
+else
+  model:add(nn.TemporalKMaxPooling(k))
+end
+
 model:add(nn.Dropout(0.5))
-model:add(nn.View(outputFrameSize))
+model:add(nn.View(k * opt.nKernels))
 
 -- stage 3: fully-connected layers
-for i = 1,opt.fullyConnectedLayers do
-  local nunits = 0
+for i = 1,opt.nFullyConnectedLayers do
+  local nunits = opt.nKernels
   if i == 1 then
-    nunits = outputFrameSize
-  else
-    nunits = 500
+    nunits = k * opt.nKernels
   end
-  model:add(nn.Linear(nunits, 500))
+  linear = nn.Linear(nunits, nunits)
+  -- linear.bias = torch.ones(linear.bias:size())
+  model:add(linear)
   model:add(nn.ReLU())
   model:add(nn.Dropout(0.5))
 end
 
 -- stage 4: output layer (before cost)
-if opt.fullyConnectedLayers < 1 then
-  model:add(nn.Linear(outputFrameSize, noutputs))
+local last = nil
+if opt.nFullyConnectedLayers < 1 then
+  last = nn.Linear(opt.nKernels, noutputs)
 else
-  model:add(nn.Linear(500, noutputs))
+  last = nn.Linear(opt.nKernels, noutputs)
 end
+last.bias = torch.ones(last.bias:size())
+model:add(last)
 
--- print '==> here is the model:'
--- print(model)
-
--- Visualization is quite easy, using itorch.image().
-
-if opt.visualize then
-   if opt.model == 'convnet' then
-      if itorch then
-	 print '==> visualizing ConvNet filters'
-	 print('Layer 1 filters:')
-	 itorch.image(model:get(1).weight)
-	 print('Layer 2 filters:')
-	 itorch.image(model:get(5).weight)
-      else
-	 print '==> To visualize filters, start the script in itorch notebook'
-      end
-   end
+if opt.type == 'cuda' then
+  model:cuda()
 end
