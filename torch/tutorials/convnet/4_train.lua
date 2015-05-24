@@ -34,13 +34,12 @@ if not opt then
    cmd:option('-save', 'results', 'subdirectory to save/log experiments in')
    cmd:option('-visualize', false, 'visualize input data and weights during training')
    cmd:option('-plot', false, 'live plot')
-   cmd:option('-optimization', 'SGD', 'optimization method: SGD | ASGD | CG | LBFGS')
+   cmd:option('-optimization', 'SGD', 'optimization method: SGD | ASGD | ADAGRAD | ADADELTA')
    cmd:option('-learningRate', 1e-3, 'learning rate at t=0')
    cmd:option('-batchSize', 1, 'mini-batch size (1 = pure stochastic)')
    cmd:option('-weightDecay', 0, 'weight decay (SGD only)')
    cmd:option('-momentum', 0, 'momentum (SGD only)')
    cmd:option('-t0', 1, 'start averaging at t0 (ASGD only), in nb of epochs')
-   cmd:option('-maxIter', 2, 'maximum nb of iterations for CG and LBFGS')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
@@ -69,6 +68,8 @@ confusion = optim.ConfusionMatrix(max_class)
 -- Log results to files
 trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
 testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
+normsLogger = optim.Logger(paths.concat(opt.save, 'norms.log'))
+normsLogger:setNames({'epoch', 'layer#', 'module', 'min', 'max', 'mean'})
 
 -- Retrieve parameters and gradients:
 -- this extracts and flattens all the trainable parameters of the mode
@@ -80,21 +81,7 @@ end
 ----------------------------------------------------------------------
 print '==> configuring optimizer'
 
-if opt.optimization == 'CG' then
-   optimState = {
-      maxIter = opt.maxIter
-   }
-   optimMethod = optim.cg
-
-elseif opt.optimization == 'LBFGS' then
-   optimState = {
-      learningRate = opt.learningRate,
-      maxIter = opt.maxIter,
-      nCorrection = 10
-   }
-   optimMethod = optim.lbfgs
-
-elseif opt.optimization == 'SGD' then
+if opt.optimization == 'SGD' then
    optimState = {
       learningRate = opt.learningRate,
       weightDecay = opt.weightDecay,
@@ -102,14 +89,20 @@ elseif opt.optimization == 'SGD' then
       learningRateDecay = 1e-7
    }
    optimMethod = optim.sgd
-
 elseif opt.optimization == 'ASGD' then
    optimState = {
       eta0 = opt.learningRate,
       t0 = trsize * opt.t0
    }
    optimMethod = optim.asgd
-
+elseif opt.optimization == 'ADAGRAD' then
+  optimState = {
+    learningRate = opt.learningRate
+  }
+  optimMethod = optim.adagrad
+elseif opt.optimization == 'ADADELTA' then
+  optimState = nil
+  optimMethod = optim.adadelta
 else
    error('unknown optimization method')
 end
@@ -251,11 +244,21 @@ function train()
                        return f,gradParameters
                     end
 
-      -- optimize on current mini-batch
+      -- Optimize on current mini-batch.
       if optimMethod == optim.asgd then
          _,_,average = optimMethod(feval, parameters, optimState)
       else
          optimMethod(feval, parameters, optimState)
+      end
+
+      maxNorm = 1
+      renormDim = 1
+      p = 2
+      -- Rescale weights of fully-connected layers.
+      for i,module in ipairs(model:findModules('nn.Linear')) do
+        if module.weight ~= nil then
+          module.weight:renorm(p, renormDim, maxNorm)
+        end
       end
    end
 
@@ -282,6 +285,20 @@ function train()
    print('==> saving model to '..filename)
    torch.save(filename, model)
 
+  for i,module in ipairs(model:listModules()) do
+    if module.weight ~= nil then
+      -- norms = torch.pow(module.weight, 2):sum(2)
+      norms = module.weight:norm(2, 2)
+      normsLogger:add({
+        string.format('%d', epoch),
+        string.format('%d', i),
+        torch.typename(module),
+        string.format('%f', torch.min(norms)),
+        string.format('%f', torch.max(norms)),
+        string.format('%f', torch.mean(norms))})
+    end
+  end
+    
    -- next epoch
    confusion:zero()
    epoch = epoch + 1
