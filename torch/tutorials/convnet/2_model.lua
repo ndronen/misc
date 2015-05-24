@@ -36,6 +36,7 @@ if not opt then
   cmd:option('-kernelWidth', 3, 'width of kernels: 2 or greater')
   cmd:option('-nKernels', 500, 'number of kernels: 2 or greater')
   cmd:option('-nFullyConnectedLayers', 1, 'number of extra fully-connected layers after convolutional layers')
+  cmd:option('-lookupOnGpu', true, 'put the lookup table on the GPU')
   cmd:text()
   opt = cmd:parse(arg or {})
 end
@@ -67,7 +68,11 @@ model = nn.Sequential()
 
 -- stage 1: lookup table
 if opt.type == 'cuda' then
-  model:add(nn.LookupTableGPU(nWords, nWordDims, true))
+  if opt.lookupOnGpu then
+    model:add(nn.LookupTableGPU(nWords, nWordDims, true))
+  else
+    model:add(nn.LookupTable(nWords, nWordDims))
+  end
 else
   model:add(nn.LookupTable(nWords, nWordDims))
 end

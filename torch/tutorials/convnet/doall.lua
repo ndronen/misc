@@ -56,6 +56,7 @@ cmd:option('-size', 'all', 'how many samples do we load for training: all | smak
 cmd:option('-kernelWidth', 2, 'width of kernels: 2 or greater')
 cmd:option('-nKernels', 500, 'number of kernels: 2 or greater')
 cmd:option('-nFullyConnectedLayers', 1, 'number of extra fully-connected layers after convolutional layers')
+cmd:option('-lookupOnGpu', true, 'put the lookup table on the GPU')
 cmd:text()
 opt = cmd:parse(arg or {})
 
