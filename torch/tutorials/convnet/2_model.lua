@@ -54,7 +54,7 @@ nWords = 107701
 nWordDims = 50
 
 inputFrameSize = nWordDims; -- dimensionality of one sequence element 
-kw = 3;          -- kernel spans three input elements
+kw = opt.kernelWidth;          -- kernel spans three input elements
 dw = 1;          -- we step once and go on to the next sequence element
 
 ----------------------------------------------------------------------
@@ -110,7 +110,7 @@ if opt.nFullyConnectedLayers < 1 then
 else
   last = nn.Linear(opt.nKernels, noutputs)
 end
-last.bias = torch.ones(last.bias:size())
+-- last.bias = torch.ones(last.bias:size())
 model:add(last)
 
 if opt.type == 'cuda' then
