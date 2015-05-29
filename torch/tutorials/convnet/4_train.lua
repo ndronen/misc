@@ -39,6 +39,7 @@ if not opt then
    cmd:option('-batchSize', 1, 'mini-batch size (1 = pure stochastic)')
    cmd:option('-weightDecay', 0, 'weight decay (SGD only)')
    cmd:option('-momentum', 0, 'momentum (SGD only)')
+   cmd:option('-maxNorm', 10, 'maximum 2-norm of neuron weights in fully-connected layers') 
    cmd:option('-t0', 1, 'start averaging at t0 (ASGD only), in nb of epochs')
    cmd:text()
    opt = cmd:parse(arg or {})
@@ -251,13 +252,12 @@ function train()
          optimMethod(feval, parameters, optimState)
       end
 
-      maxNorm = 1
       renormDim = 1
       p = 2
       -- Rescale weights of fully-connected layers.
       for i,module in ipairs(model:findModules('nn.Linear')) do
         if module.weight ~= nil then
-          module.weight:renorm(p, renormDim, maxNorm)
+          module.weight:renorm(p, renormDim, opt.maxNorm)
         end
       end
    end
