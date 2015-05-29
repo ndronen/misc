@@ -55,8 +55,9 @@ cmd:option('-padding', 2, 'the number of leading and trailing zero-padding entri
 cmd:option('-size', 'all', 'how many samples do we load for training: all | smakll')
 cmd:option('-kernelWidth', 2, 'width of kernels: 2 or greater')
 cmd:option('-nKernels', 500, 'number of kernels: 2 or greater')
-cmd:option('-nFullyConnectedLayers', 1, 'number of extra fully-connected layers after convolutional layers')
+cmd:option('-nFullyConnectedLayers', '1', 'number of extra fully-connected layers after convolutional layers')
 cmd:option('-lookupOnGpu', true, 'put the lookup table on the GPU')
+cmd:option('-maxNorm', 10, 'maximum 2-norm of neuron weights in fully-connected layers')
 cmd:text()
 opt = cmd:parse(arg or {})
 
