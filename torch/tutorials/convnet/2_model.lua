@@ -81,14 +81,7 @@ if opt.type == 'cuda' then
 else
   lookupTable = nn.LookupTable(nWords, nWordDims)
 end
-
-print(lookupTable.weight[opt.zeroVector])
-lookupTable.weight[opt.zeroVector]:zero()
-print(lookupTable.weight[opt.zeroVector])
-
 model:add(lookupTable)
-
-cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
 
 -- if opt.type == 'cuda' then
 --  model:add(nn.TemporalConvolutionFB(inputFrameSize, opt.nKernels, kw, dw))
@@ -106,7 +99,7 @@ else
   model:add(nn.TemporalKMaxPooling(k))
 end
 
-model:add(nn.Dropout(0.5))
+-- model:add(nn.Dropout(0.5))
 model:add(nn.View(k * opt.nKernels))
 
 -- stage 3: fully-connected layers
