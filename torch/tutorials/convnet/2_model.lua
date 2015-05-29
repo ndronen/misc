@@ -16,6 +16,7 @@
 -- require 'torch'   -- torch
 -- require 'nn'      -- provides all sorts of trainable modules/layers
 
+require 'kttorch'
 require 'cutorch'
 require 'fbcunn'
 require('fb.luaunit')
@@ -70,6 +71,8 @@ k = 1
 -- a typical modern convolution network (conv+relu+pool)
 model = nn.Sequential()
 
+model:add(kttorch.LookupTableInputZeroer(0.2, opt.zeroVector))
+
 -- stage 1: lookup table
 local lookupTable = nil
 if opt.type == 'cuda' then
@@ -81,19 +84,19 @@ if opt.type == 'cuda' then
 else
   lookupTable = nn.LookupTable(nWords, nWordDims)
 end
+lookupTable.weight[opt.zeroVector]:zero()
 model:add(lookupTable)
 
 -- if opt.type == 'cuda' then
 --  model:add(nn.TemporalConvolutionFB(inputFrameSize, opt.nKernels, kw, dw))
 -- else
-conv = nn.TemporalConvolution(inputFrameSize, opt.nKernels, kw, dw)
--- conv.bias = torch.ones(conv.bias:size())
-model:add(conv)
+model:add(nn.TemporalConvolution(inputFrameSize, opt.nKernels, kw, dw))
 -- end
 model:add(nn.ReLU())
 
 if k == 1 then
-  -- model:add(nn.TemporalMaxPooling(trainData.data:size(2)-2))
+  -- Is it (width - kernel width) or (width - (kernel width - 1))?
+  -- model:add(nn.TemporalMaxPooling(trainData.data:size(2)-(opt.kernelWidth-1)))
   model:add(nn.TemporalMaxPooling(trainData.data:size(2)-opt.kernelWidth))
 else
   model:add(nn.TemporalKMaxPooling(k))
