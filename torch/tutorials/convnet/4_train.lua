@@ -40,6 +40,7 @@ if not opt then
    cmd:option('-weightDecay', 0, 'weight decay (SGD only)')
    cmd:option('-momentum', 0, 'momentum (SGD only)')
    cmd:option('-maxNorm', 10, 'maximum 2-norm of neuron weights in fully-connected layers') 
+   cmd:option('-maxWordNorm', 20, 'maximum 2-norm of word representations in lookup table')
    cmd:option('-t0', 1, 'start averaging at t0 (ASGD only), in nb of epochs')
    cmd:text()
    opt = cmd:parse(arg or {})
@@ -252,14 +253,23 @@ function train()
          optimMethod(feval, parameters, optimState)
       end
 
-      renormDim = 1
       p = 2
+      renormDim = 1
       -- Rescale weights of fully-connected layers.
       for i,module in ipairs(model:findModules('nn.Linear')) do
         if module.weight ~= nil then
           module.weight:renorm(p, renormDim, opt.maxNorm)
         end
       end
+
+      --[[ 
+      -- This causes a CUDA error that I haven't been able to diagnose yet.
+      for i,module in ipairs(model:listModules()) do
+        if torch.isTypeOf(module, 'nn.LookupTable') then
+          module.weight:renorm(p, renormDim, opt.maxWordNorm)
+        end
+      end
+      --]]
    end
 
    -- time taken
