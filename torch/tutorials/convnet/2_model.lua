@@ -35,8 +35,9 @@ if not opt then
   cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
   cmd:option('-kernelWidth', 3, 'width of kernels: 2 or greater')
   cmd:option('-nKernels', 500, 'number of kernels: 2 or greater')
-  cmd:option('-nFullyConnectedLayers', 1, 'number of extra fully-connected layers after convolutional layers')
+  cmd:option('-nFullyConnectedLayers', '1', 'number of extra fully-connected layers after convolutional layers')
   cmd:option('-lookupOnGpu', true, 'put the lookup table on the GPU')
+  cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
   cmd:text()
   opt = cmd:parse(arg or {})
 end
@@ -44,11 +45,14 @@ end
 ----------------------------------------------------------------------
 print '==> define parameters'
 
--- 2-class problem
-if opt.loss == 'mse' then
-  noutputs = 1
+if string.match(opt.nFullyConnectedLayers, ",") then
+  local layerSizeStrings = string.split(opt.nFullyConnectedLayers, ",")
+  opt.nFullyConnectedLayers = {}
+  for i, size in ipairs(layerSizeStrings) do
+    table.insert(opt.nFullyConnectedLayers, tonumber(size))
+  end
 else
-  noutputs = torch.max(trainData.labels)
+  opt.nFullyConnectedLayers = { tonumber(opt.nFullyConnectedLayers) }
 end
 
 nWords = 107701
@@ -67,15 +71,24 @@ k = 1
 model = nn.Sequential()
 
 -- stage 1: lookup table
+local lookupTable = nil
 if opt.type == 'cuda' then
   if opt.lookupOnGpu then
-    model:add(nn.LookupTableGPU(nWords, nWordDims, true))
+    lookupTable = nn.LookupTableGPU(nWords, nWordDims, true)
   else
-    model:add(nn.LookupTable(nWords, nWordDims))
+    lookupTable = nn.LookupTable(nWords, nWordDims)
   end
 else
-  model:add(nn.LookupTable(nWords, nWordDims))
+  lookupTable = nn.LookupTable(nWords, nWordDims)
 end
+
+print(lookupTable.weight[opt.zeroVector])
+lookupTable.weight[opt.zeroVector]:zero()
+print(lookupTable.weight[opt.zeroVector])
+
+model:add(lookupTable)
+
+cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
 
 -- if opt.type == 'cuda' then
 --  model:add(nn.TemporalConvolutionFB(inputFrameSize, opt.nKernels, kw, dw))
@@ -87,7 +100,8 @@ model:add(conv)
 model:add(nn.ReLU())
 
 if k == 1 then
-  model:add(nn.TemporalMaxPooling(trainData.data:size(2)-2))
+  -- model:add(nn.TemporalMaxPooling(trainData.data:size(2)-2))
+  model:add(nn.TemporalMaxPooling(trainData.data:size(2)-opt.kernelWidth))
 else
   model:add(nn.TemporalKMaxPooling(k))
 end
@@ -96,27 +110,30 @@ model:add(nn.Dropout(0.5))
 model:add(nn.View(k * opt.nKernels))
 
 -- stage 3: fully-connected layers
-for i = 1,opt.nFullyConnectedLayers do
-  local nunits = opt.nKernels
+local penultimateOutput = nil
+for i,noutput in ipairs(opt.nFullyConnectedLayers) do
+  local ninput = nil
   if i == 1 then
-    nunits = k * opt.nKernels
+    ninput = k * opt.nKernels
+  else
+    ninput = opt.nFullyConnectedLayers[i-1]
   end
-  linear = nn.Linear(nunits, nunits)
-  -- linear.bias = torch.ones(linear.bias:size())
+  linear = nn.Linear(ninput, noutput)
+  penultimateOutput = noutput
   model:add(linear)
   model:add(nn.ReLU())
   model:add(nn.Dropout(0.5))
 end
 
 -- stage 4: output layer (before cost)
-local last = nil
-if opt.nFullyConnectedLayers < 1 then
-  last = nn.Linear(opt.nKernels, noutputs)
+local noutputs = nil
+if opt.loss == 'mse' then
+  noutputs = 1
 else
-  last = nn.Linear(opt.nKernels, noutputs)
+  noutputs = torch.max(trainData.labels)
 end
--- last.bias = torch.ones(last.bias:size())
-model:add(last)
+
+model:add(nn.Linear(penultimateOutput, noutputs))
 
 if opt.type == 'cuda' then
   model:cuda()
