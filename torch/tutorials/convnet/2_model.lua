@@ -20,6 +20,7 @@ require 'kttorch'
 require 'cutorch'
 require 'fbcunn'
 require('fb.luaunit')
+require 'hdf5'
 local torch = require('fbtorch')
 
 ----------------------------------------------------------------------
@@ -39,6 +40,8 @@ if not opt then
   cmd:option('-nFullyConnectedLayers', '1', 'number of extra fully-connected layers after convolutional layers')
   cmd:option('-lookupOnGpu', true, 'put the lookup table on the GPU')
   cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
+  cmd:option('-wordDims', 50, 'number of dimensions of word representations')
+  cmd:option('-word2Vec', false, 'use pretrained word2vec weights in lookup table')
   cmd:text()
   opt = cmd:parse(arg or {})
 end
@@ -57,9 +60,8 @@ else
 end
 
 nWords = 107701
-nWordDims = 50
 
-inputFrameSize = nWordDims; -- dimensionality of one sequence element 
+inputFrameSize = opt.wordDims; -- dimensionality of one sequence element 
 kw = opt.kernelWidth;          -- kernel spans three input elements
 dw = 1;          -- we step once and go on to the next sequence element
 
@@ -77,13 +79,23 @@ model:add(kttorch.LookupTableInputZeroer(0.2, opt.zeroVector))
 local lookupTable = nil
 if opt.type == 'cuda' then
   if opt.lookupOnGpu then
-    lookupTable = nn.LookupTableGPU(nWords, nWordDims, true)
+    lookupTable = nn.LookupTableGPU(nWords, opt.wordDims, true)
   else
-    lookupTable = nn.LookupTable(nWords, nWordDims)
+    lookupTable = nn.LookupTable(nWords, opt.wordDims)
   end
 else
-  lookupTable = nn.LookupTable(nWords, nWordDims)
+  lookupTable = nn.LookupTable(nWords, opt.wordDims)
 end
+
+if opt.word2Vec then
+  word2VecFile = hdf5.open('okanohara-weights.h5', 'r')
+  word2VecData = word2VecFile:read():all()
+  lookupTable.weight:copy(word2VecData.weight)
+end
+
+print('lookup.weight[1]')
+print(lookupTable.weight[1])
+
 lookupTable.weight[opt.zeroVector]:zero()
 model:add(lookupTable)
 
