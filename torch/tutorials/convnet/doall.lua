@@ -62,6 +62,7 @@ cmd:option('-maxNorm', 10, 'maximum 2-norm of neuron weights in fully-connected 
 cmd:option('-maxWordNorm', 20, 'maximum 2-norm of word representations in lookup table')
 cmd:option('-wordDims', 50, 'number of dimensions of word representations')
 cmd:option('-word2Vec', false, 'use pretrained word2vec weights in lookup table')
+cmd:option('-fixWords', false, 'disable updates of word representations')
 cmd:text()
 opt = cmd:parse(arg or {})
 
