@@ -42,6 +42,7 @@ if not opt then
   cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
   cmd:option('-wordDims', 50, 'number of dimensions of word representations')
   cmd:option('-word2Vec', false, 'use pretrained word2vec weights in lookup table')
+  cmd:option('-fixWords', false, 'disable updates of word representations')
   cmd:text()
   opt = cmd:parse(arg or {})
 end
@@ -93,10 +94,12 @@ if opt.word2Vec then
   lookupTable.weight:copy(word2VecData.weight)
 end
 
-print('lookup.weight[1]')
-print(lookupTable.weight[1])
-
 lookupTable.weight[opt.zeroVector]:zero()
+
+if opt.fixWords then
+  lookupTable = kttorch.FixedLookupTable(lookupTable)
+end
+
 model:add(lookupTable)
 
 -- if opt.type == 'cuda' then
@@ -114,7 +117,7 @@ else
   model:add(nn.TemporalKMaxPooling(k))
 end
 
--- model:add(nn.Dropout(0.5))
+model:add(nn.Dropout(0.5))
 model:add(nn.View(k * opt.nKernels))
 
 -- stage 3: fully-connected layers
