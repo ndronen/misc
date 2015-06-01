@@ -63,6 +63,8 @@ cmd:option('-maxWordNorm', 20, 'maximum 2-norm of word representations in lookup
 cmd:option('-wordDims', 50, 'number of dimensions of word representations')
 cmd:option('-word2Vec', false, 'use pretrained word2vec weights in lookup table')
 cmd:option('-fixWords', false, 'disable updates of word representations')
+cmd:option('-nValidation', 0, 'size of the validation set to hold out from training')
+cmd:option('-test', false, 'whether to load and predict on test set')
 cmd:text()
 opt = cmd:parse(arg or {})
 
@@ -93,7 +95,18 @@ print(model)
 ----------------------------------------------------------------------
 print '==> training!'
 
+trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
+validationLogger = optim.Logger(paths.concat(opt.save, 'validation.log'))
+testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
+normsLogger = optim.Logger(paths.concat(opt.save, 'norms.log'))
+normsLogger:setNames({'epoch', 'layer#', 'module', 'min', 'max', 'mean'})
+
 while true do
-   train()
-   test()
+  train()
+  if validData ~= nil then
+    test(validData, { mode='validation', logger=validationLogger })
+  end
+  if testData ~= nil then
+    test(testData, { mode='test', logger=testLogger })
+  end
 end

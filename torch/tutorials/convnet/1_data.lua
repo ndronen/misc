@@ -16,6 +16,8 @@ if not opt then
    cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
    cmd:option('-padding', 2, 'the number of leading and trailing zero-padding entries per sentence')
    cmd:option('-type', 'double', 'type: double | float | cuda')
+   cmd:option('-nValidation', 0, 'size of the validation set to hold out from training')
+   cmd:option('-test', false, 'whether to load and predict on test set')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
@@ -32,8 +34,10 @@ end
 trainDatasets = trainHdfile:read():all()
 
 -- Load the test data.
-testHdfile = hdf5.open('okanohara-test.h5', 'r')
-testDatasets = testHdfile:read():all()
+if opt.test then
+  testHdfile = hdf5.open('okanohara-test.h5', 'r')
+  testDatasets = testHdfile:read():all()
+end
 
 if (opt.loss == 'mse') and (opt.scaleMseTarget) then
   --[[
@@ -80,28 +84,57 @@ if (opt.loss == 'mse') and (opt.scaleMseTarget) then
 
   trainDatasets.y = convert_to_regression_targets(
       trainDatasets, opt.zeroVector, opt.padding)
-  testDatasets.y = convert_to_regression_targets(
-      testDatasets, opt.zeroVector, opt.padding)
+  if opt.test then
+    testDatasets.y = convert_to_regression_targets(
+        testDatasets, opt.zeroVector, opt.padding)
+  end
 end
 
-trsize = trainDatasets.y:size(1)
-tesize = testDatasets.y:size(1)
+trsize = trainDatasets.y:size(1) - opt.nValidation
+if opt.test then
+  tesize = testDatasets.y:size(1)
+end
 
 trainData = {
-   data = trainDatasets.X,
-   labels = trainDatasets.y,
-   size = function() return trsize end
+  labels = trainDatasets.y,
+  data = trainDatasets.X,
+  size = function() return trsize end
 }
 
-testData = {
-   data = testDatasets.X,
-   labels = testDatasets.y,
-   size = function() return tesize end
-} 
+if opt.nValidation > 0 then
+  -- Move some of the training examples to the validation set.
+  validData = {
+     labels = trainData.labels:narrow(1, trsize, opt.nValidation),
+     data = trainData.data:narrow(1, trsize, opt.nValidation),
+     size = function() return opt.nValidation end
+  }
+  trainData = {
+    labels = trainData.labels:narrow(1, 1, trsize),
+    data = trainData.data:narrow(1, 1, trsize),
+    size = function() return trsize end
+  }
+end
+
+if opt.test then
+  testData = {
+    labels = testDatasets.y,
+    data = testDatasets.X,
+    size = function() return tesize end
+  } 
+end
 
 if opt.type == 'cuda' then
   trainData.data = trainData.data:clone():cuda()
   trainData.labels = trainData.labels:clone():cuda()
-  testData.data = testData.data:clone():cuda()
-  testData.labels = testData.labels:clone():cuda()
+
+  if validData ~= nil then
+    validData.data = validData.data:clone():cuda()
+    validData.labels = validData.labels:clone():cuda()
+  end
+
+  if testData ~= nil then
+    testData.data = testData.data:clone():cuda()
+    testData.labels = testData.labels:clone():cuda()
+  end
 end
+

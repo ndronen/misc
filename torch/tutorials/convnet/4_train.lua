@@ -67,11 +67,10 @@ end
 -- This matrix records the current confusion across classes
 confusion = optim.ConfusionMatrix(max_class)
 
--- Log results to files
-trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
-testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
-normsLogger = optim.Logger(paths.concat(opt.save, 'norms.log'))
-normsLogger:setNames({'epoch', 'layer#', 'module', 'min', 'max', 'mean'})
+-- trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
+-- testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
+-- normsLogger = optim.Logger(paths.concat(opt.save, 'norms.log'))
+-- normsLogger:setNames({'epoch', 'layer#', 'module', 'min', 'max', 'mean'})
 
 -- Retrieve parameters and gradients:
 -- this extracts and flattens all the trainable parameters of the mode
@@ -124,8 +123,6 @@ function train()
    model:training()
 
    -- shuffle at each epoch
-   print 'trsize'
-   print(trsize)
    shuffle = torch.randperm(trsize)
 
    -- do one epoch
@@ -282,10 +279,6 @@ function train()
 
    -- update logger/plot
    trainLogger:add{['% mean class accuracy (train set)'] = confusion.totalValid * 100}
-   if opt.plot then
-      trainLogger:style{['% mean class accuracy (train set)'] = '-'}
-      trainLogger:plot()
-   end
 
    -- TODO: log summary statistic of model weights.
 
