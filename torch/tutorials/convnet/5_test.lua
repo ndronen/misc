@@ -40,7 +40,6 @@ function test(data, opts)
       end
       pred = torch.round(pred)[1]
     end
-    -- print('pred ' .. pred .. ' target ' .. target)
     confusion:add(pred, target)
   end
 
