@@ -12,7 +12,7 @@ if not opt then
    cmd:option('-size', 'all', 'how many samples do we load: all | 20k | 1k')
    cmd:option('-visualize', true, 'visualize input data and weights during training')
    cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
-   cmd:option('-scaleMseTarget', false, 'whether to scale the target variable when loss is mse')
+   cmd:option('-scaleMseTarget', 0, 'whether to scale the target variable when loss is mse')
    cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
    cmd:option('-padding', 2, 'the number of leading and trailing zero-padding entries per sentence')
    cmd:option('-type', 'double', 'type: double | float | cuda')
@@ -77,8 +77,8 @@ if (opt.loss == 'mse') and (opt.scaleMseTarget) then
     reg_targets[neg_mask] = -reg_targets[neg_mask]
     reg_targets = reg_targets + max_length
 
-    -- Rescale to a range of about 1-10.
-    reg_targets = torch.round((reg_targets:float()/8.5))+1
+    -- Rescale.
+    reg_targets = torch.round((reg_targets:float()/opt.scaleMseTarget))+1
     return reg_targets
   end
 

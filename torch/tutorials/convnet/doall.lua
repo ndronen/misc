@@ -39,7 +39,7 @@ cmd:option('-seed', 1, 'fixed input seed for repeatable experiments')
 cmd:option('-threads', 2, 'number of threads')
 -- loss:
 cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
-cmd:option('-scaleMseTarget', false, 'whether to scale the target variable when loss is mse')
+cmd:option('-scaleMseTarget', 0, 'whether to scale the target variable when loss is mse')
 -- training:
 cmd:option('-save', 'results', 'subdirectory to save/log experiments in')
 cmd:option('-plot', false, 'live plot')
