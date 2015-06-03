@@ -1,19 +1,3 @@
-----------------------------------------------------------------------
--- This script demonstrates how to define a training procedure,
--- irrespective of the model/loss functions chosen.
---
--- It shows how to:
---   + construct mini-batches on the fly
---   + define a closure to estimate (a noisy) loss
---     function, as well as its derivatives wrt the parameters of the
---     model to be trained
---   + optimize the function, according to several optmization
---     methods: SGD, L-BFGS.
---
--- Clement Farabet
-----------------------------------------------------------------------
-
--- require 'torch'   -- torch
 require 'xlua'    -- xlua provides useful tools, like progress bars
 require 'optim'   -- an optimization package, for online and batch methods
 
@@ -22,8 +6,6 @@ require 'fbcunn'
 require('fb.luaunit')
 local torch = require('fbtorch')
 
-----------------------------------------------------------------------
--- parse command line arguments
 if not opt then
    print '==> processing options'
    cmd = torch.CmdLine()
@@ -46,17 +28,11 @@ if not opt then
    opt = cmd:parse(arg or {})
 end
 
-----------------------------------------------------------------------
--- CUDA?
 if opt.type == 'cuda' then
    model:cuda()
    criterion:cuda()
 end
 
-----------------------------------------------------------------------
-print '==> defining some tools'
-
--- classes
 local classes = {}
 min_class = 1
 max_class = torch.max(trainData.labels)
@@ -67,20 +43,12 @@ end
 -- This matrix records the current confusion across classes
 confusion = optim.ConfusionMatrix(max_class)
 
--- trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
--- testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
--- normsLogger = optim.Logger(paths.concat(opt.save, 'norms.log'))
--- normsLogger:setNames({'epoch', 'layer#', 'module', 'min', 'max', 'mean'})
-
 -- Retrieve parameters and gradients:
--- this extracts and flattens all the trainable parameters of the mode
+-- this extracts and flattens all the trainable parameters of the model
 -- into a 1-dim vector
 if model then
-   parameters,gradParameters = model:getParameters()
+   parameters, gradParameters = model:getParameters()
 end
-
-----------------------------------------------------------------------
-print '==> configuring optimizer'
 
 if opt.optimization == 'SGD' then
    optimState = {
@@ -112,7 +80,6 @@ end
 print '==> defining training procedure'
 
 function train()
-
    -- epoch tracker
    epoch = epoch or 1
 
@@ -128,6 +95,7 @@ function train()
    -- do one epoch
    print('==> doing epoch on training data:')
    print("==> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
+
    for t = 1,trainData:size(),opt.batchSize do
       -- disp progress
       xlua.progress(t, trainData:size())
@@ -160,28 +128,8 @@ function train()
 
                        -- evaluate function for complete mini batch
                        for i = 1,#inputs do
-                          -- estimate f
-                          -- print('i')
-                          -- print(i)
-                          -- print('inputs')
-                          -- print(inputs)
-                          -- print(inputs[i])
                           input = inputs[i]:clone():cuda()
-                          -- local output = model:forward(inputs[i])
                           local output = model:forward(input)
-                          --[[
-                          print 'output'
-                          print(output)
-                          print 'targets'
-                          print(targets[i])
-                          --]]
-
-                          --print('output')
-                          --print(output)
-                          -- print('targets[i]')
-                          -- print(targets[i])
-                          --print('targets')
-                          --print(targets)
                           local targs = nil
                           if opt.loss == 'mse' then
                             if opt.type == 'cuda' then
@@ -193,27 +141,14 @@ function train()
                           else
                             targs = targets[i]
                           end
-                          --print('targs')
-                          --print(targs)
-                          --
-                            
-                          -- local err = criterion:forward(output, targets[i])
+
                           local err = criterion:forward(output, targs)
                           f = f + err
 
                           -- estimate df/dW
-                          -- local df_do = criterion:backward(output, targets[i])
                           local df_do = criterion:backward(output, targs)
-                          -- model:backward(inputs[i], df_do)
-                          -- model:backward(inputs[i], df_do)
                           model:backward(input, df_do)
 
-                          -- update confusion
-                          -- confusion:add(output, targets[i])
-                          --[[
-                          print('output (original)')
-                          print(output)
-                          --]]
                           if opt.loss == 'mse' then
                             if output[1] > max_class then
                               output[1] = max_class
@@ -222,12 +157,7 @@ function train()
                             end
                             output = torch.round(output)[1]
                           end
-                          --[[
-                          print('output (modified)')
-                          print(output)
-                          print('targs')
-                          print(targs)
-                          --]]
+
                           if torch.isTensor(targs) then
                             confusion:add(output, targs[1])
                           else
@@ -240,7 +170,7 @@ function train()
                        f = f/#inputs
 
                        -- return f and df/dX
-                       return f,gradParameters
+                       return f, gradParameters
                     end
 
       -- Optimize on current mini-batch.
@@ -290,7 +220,6 @@ function train()
 
   for i,module in ipairs(model:listModules()) do
     if module.weight ~= nil then
-      -- norms = torch.pow(module.weight, 2):sum(2)
       norms = module.weight:norm(2, 2)
       normsLogger:add({
         string.format('%d', epoch),
