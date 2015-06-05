@@ -1,3 +1,5 @@
+#!/usr/bin/env th
+
 require('hdf5');
 require('kttorch');
 require('fbcunn');
