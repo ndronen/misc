@@ -64,5 +64,8 @@ anOut:write('diffMean', diffMean)
 anOut:write('posFilters', posFilters)
 anOut:write('negFilters', negFilters)
 anOut:write('disabledFilters', disabledFilters)
+anOut:write('indices', predData.indices)
+anOut:write('output', predData.output)
+anOut:write('pred', predData.pred)
 
 anOut:close()
