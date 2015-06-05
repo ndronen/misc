@@ -65,6 +65,7 @@ cmd:option('-word2Vec', false, 'use pretrained word2vec weights in lookup table'
 cmd:option('-fixWords', false, 'disable updates of word representations')
 cmd:option('-nValidation', 0, 'size of the validation set to hold out from training')
 cmd:option('-test', false, 'whether to load and predict on test set')
+cmd:option('-spatial', false, 'train a spatial convolutional network')
 cmd:text()
 opt = cmd:parse(arg or {})
 
