@@ -11,7 +11,7 @@ cmd:text()
 cmd:text('Options:')
 cmd:argument('-model', 'path to the model')
 cmd:argument('-input', 'path to test data file (HDF5 format)')
-cmd:argument('-output', 'path to which to save the predictions')
+cmd:argument('-pred', 'path to which to save the predictions (HDF5 format)')
 cmd:option('-record', false,
   'whether to record indices/values of activations of first convolutional layer')
 cmd:text()
