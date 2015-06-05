@@ -23,16 +23,19 @@ local testFile = hdf5.open(opt.input, 'r')
 local testData = testFile:read():all()
 local model = torch.load(opt.model)
 
-local predOut = hdf5.open(opt.output, 'w')
+
+local predOut = hdf5.open(opt.pred, 'w')
 
 -- Get and save predictions.
 local pred = nil
-if opt.indices then
+if opt.record then
   modules = model:findModules('nn.TemporalMaxPooling')
   assert(#modules == 1)
+
   indexRecorder = kttorch.IndexRecorder(modules[1])
   outputRecorder = kttorch.OutputRecorder(modules[1])
   pred = kttorch.predict(model, testData.X, { indexRecorder, outputRecorder })
+
   predOut:write('indices', indexRecorder.recording)
   predOut:write('output', outputRecorder.recording)
 else
@@ -40,4 +43,10 @@ else
 end
 
 predOut:write('pred', pred)
+
+local convLayers = model:findModules('nn.TemporalConvolution')
+local filterWidth = torch.zeros(1)
+filterWidth[1] = convLayers[1].kW
+
+predOut:write('filterWidth', filterWidth)
 predOut:close()
