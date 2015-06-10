@@ -1,31 +1,51 @@
-* Begin error analysis:
+* Model enhancements
+    * Create layer to shatter the sentence matrix created by a LookupTable
+      into an nFilters X filterWidth X wordDim 3-tensor.
+    * Copy and modify nn.MM so that it has its own 3-tensor of weights
+      (of size nFilters X wordDim X filterWidth) and that it accumulates
+      the gradient.
+* Data sets:
+    * BNC
+    * Wikipedia (same size as BNC)
+    * Wikipedia (much larger)
+    * Sentences from ASAP short answer data set
+* Models
+    * Temporal convolutional network
+    * Kalchbrenner network
+    * RNN language model (co-trained with logistic layer?)
+* Error analysis:
     * Get test set predictions from a model.
     * Get indices of activations for each sentence in test set.
     * Classify features as either positive or negative.
-    * Get magnitudes/positions of outputs of positive filters for each sentence.
-    * Get magnitudes/positions of outputs of negative filters for each sentence.
-* Try using one or more spatial convolution layers.
-* Try using the Kalchbrenner dynamic convnet.
+    * Here the workflow changes to Python:
+        * For each sentence 
+            * Get outputs/indices of activations from positive filters.
+            * Then, for each position in the sentence, sum the outputs
+              of the positive filters.  (If a filter is activated at
+              position i, and the filter is of width k, the output 
+              of the filter is copied to the words at positions i,
+              i+1, ..., i+k-1.)
+            * Do the same for the negative filters.
 * Use Renormer module in 4_train.lua.
 * Optionally renorm the Word2Vec weights to unit length before training.
+* Create layer to record summary statistics about a layer's
+  post-activation outputs.  This can help diagnose problems
+  with weight initialization -- particularly for deeper
+  networks.
 * I would like to be able to use TemporalConvolutionFB, but I get
   an error about tensor size when I do.  Put some print statements
   into the C code to isolate the problem, fix the code, and submit
   a pull request for fbcunn.  Note: this appears to be caused by
   a faulty assumption about the size of outputTH in one of the
-  methods in fbcunn/src/ConvolutionBias.cu.
-* Create layer to shatter the sentence matrix created by a LookupTable
-  into an nFilters X filterWidth X wordDim 3-tensor.
-* Copy and modify nn.MM so that it has its own 3-tensor of weights
-  (of size nFilters X wordDim X filterWidth) and that it accumulates
-  the gradient.
+  methods in fbcunn/src/ConvolutionBias.cu.  I opened this issue
+  against the problem:
+    https://github.com/facebook/fbcunn/issues/62
 * I want to be able keep the word representations on the surface
   of the L2 ball (i.e. to renorm them to L2 length 1 after every
   minibatch), but the renorm call is failing with a CUDA error.
-* Create layer to record summary statistics about a layer's
-  post-activation outputs.  This can help diagnose problems
-  with weight initialization -- particularly for deeper
-  networks.
+  I haven't been able to reproduce the error using a minimal
+  working example.  My current workaround is to renormalize the
+  dimensions of the word representations to l2 unit length.
 
 == DONE ==
 
