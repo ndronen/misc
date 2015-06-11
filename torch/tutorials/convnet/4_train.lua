@@ -24,28 +24,29 @@ if not opt then
    cmd:option('-maxNorm', 10, 'maximum 2-norm of neuron weights in fully-connected layers') 
    cmd:option('-maxWordNorm', 20, 'maximum 2-norm of word representations in lookup table')
    cmd:option('-t0', 1, 'start averaging at t0 (ASGD only), in nb of epochs')
+   cmd:option('-renormFreq', 5, 'number of epochs after which to renorm weights')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
 
-if opt.type == 'cuda' then
-   model:cuda()
-   criterion:cuda()
-end
-
+print '==> setting up classes'
 local classes = {}
 min_class = 1
 max_class = torch.max(trainData.labels)
+print('==> setting up classes ' .. min_class .. ' ' .. max_class)
 for i=1,max_class do 
   table.insert(classes, tostring(i))
 end
 
+print '==> creating confusion matrix'
 -- This matrix records the current confusion across classes
 confusion = optim.ConfusionMatrix(max_class)
 
 -- Retrieve parameters and gradients:
 -- this extracts and flattens all the trainable parameters of the model
 -- into a 1-dim vector
+
+print '==> getting initial parameters'
 if model then
    parameters, gradParameters = model:getParameters()
 end
@@ -128,8 +129,10 @@ function train()
 
                        -- evaluate function for complete mini batch
                        for i = 1,#inputs do
-                          input = inputs[i]:clone():cuda()
+                          -- input = inputs[i]:clone():cuda()
+                          local input = inputs[i]
                           local output = model:forward(input)
+                          local targs = targets[i]
                           local targs = nil
                           if opt.loss == 'mse' then
                             if opt.type == 'cuda' then
@@ -180,23 +183,26 @@ function train()
          optimMethod(feval, parameters, optimState)
       end
 
-      p = 2
-      renormDim = 1
-      -- Rescale weights of fully-connected layers.
-      for i,module in ipairs(model:findModules('nn.Linear')) do
-        if module.weight ~= nil then
-          module.weight:renorm(p, renormDim, opt.maxNorm)
+      -- p = 2
+      -- renormDim = 1
+      if epoch % opt.renormFreq == 0 then
+        renormer:renorm()
+        --[[
+        -- Rescale weights of fully-connected layers.
+        for i,module in ipairs(model:findModules('nn.Linear')) do
+          if module.weight ~= nil then
+            module.weight:renorm(p, renormDim, opt.maxNorm)
+          end
         end
-      end
 
-      --[[ 
-      -- This causes a CUDA error that I haven't been able to diagnose yet.
-      for i,module in ipairs(model:listModules()) do
-        if torch.isTypeOf(module, 'nn.LookupTable') then
-          module.weight:renorm(p, renormDim, opt.maxWordNorm)
+        -- Rescale word representations.
+        for i,module in ipairs(model:listModules()) do
+          if torch.isTypeOf(module, 'nn.LookupTable') then
+            module.weight:renorm(p, renormDim, opt.maxWordNorm)
+          end
         end
-      end
       --]]
+      end
    end
 
    -- time taken

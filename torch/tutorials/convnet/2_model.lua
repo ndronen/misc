@@ -22,7 +22,9 @@ if not opt then
   cmd:option('-wordDims', 50, 'number of dimensions of word representations')
   cmd:option('-word2Vec', false, 'use pretrained word2vec weights in lookup table')
   cmd:option('-fixWords', false, 'disable updates of word representations')
+  cmd:option('-maxWordNorm', 20, 'maximum 2-norm of word representations in lookup table')
   cmd:option('-spatial', false, 'train a spatial convolutional network')
+  cmd:option('-activation', 'relu', 'activation function: relu | tanh')
   cmd:text()
   opt = cmd:parse(arg or {})
 end
@@ -37,6 +39,13 @@ else
   opt.nFullyConnectedLayers = { tonumber(opt.nFullyConnectedLayers) }
 end
 
+local activation = nil
+if opt.activation == 'relu' then
+  activation = nn.ReLU
+elseif opt.activation == 'tanh' then
+  activation = nn.Tanh
+end
+
 nWords = 107701
 
 inputFrameSize = opt.wordDims; -- dimensionality of one sequence element 
@@ -48,13 +57,14 @@ k = 1
 
 -- a typical modern convolution network (conv+relu+pool)
 model = nn.Sequential()
+renormer = kttorch.Renormer()
 
 model:add(kttorch.LookupTableInputZeroer(0.2, opt.zeroVector))
 
 local lookupTable = nil
 if opt.type == 'cuda' then
   if opt.lookupOnGpu then
-    lookupTable = nn.LookupTableGPU(nWords, opt.wordDims, true)
+    lookupTable = nn.LookupTableGPU(nWords, opt.wordDims)
   else
     lookupTable = nn.LookupTable(nWords, opt.wordDims)
   end
@@ -74,24 +84,30 @@ if opt.fixWords then
   lookupTable = kttorch.FixedLookupTable(lookupTable)
 end
 
+renormer:add(lookupTable, opt.maxWordNorm)
+renormer:renorm()
+
 model:add(lookupTable)
 
 if opt.spatial then
   -- This doesn't work yet.
   model:add(nn.SpatialConvolution(inputFrameSize, opt.nKernels, kw, kw))
-  model:add(nn.ReLU())
+  model:add(activation())
   model:add(nn.SpatialMaxPooling(kw, kw))
 
   model:add(nn.SpatialConvolution(opt.nKernels, 5, kw, kw))
-  model:add(nn.ReLU())
+  model:add(activation())
   model:add(nn.SpatialMaxPooling(kw, kw))
 else
   -- if opt.type == 'cuda' then
   --  model:add(nn.TemporalConvolutionFB(inputFrameSize, opt.nKernels, kw, dw))
   -- else
-  model:add(nn.TemporalConvolution(inputFrameSize, opt.nKernels, kw, dw))
+  conv = nn.TemporalConvolution(inputFrameSize, opt.nKernels, kw, dw)
+  renormer:add(conv, opt.maxNorm)
+  model:add(conv)
+
+  model:add(activation())
   -- end
-  model:add(nn.ReLU())
 
   if k == 1 then
     -- Is it (width - kernel width) or (width - (kernel width - 1))?
@@ -117,9 +133,10 @@ for i,noutput in ipairs(opt.nFullyConnectedLayers) do
   end
   -- model:add(nn.BatchNormalization(0))
   linear = nn.Linear(ninput, noutput)
+  renormer:add(linear, opt.maxNorm)
   penultimateOutput = noutput
   model:add(linear)
-  model:add(nn.ReLU())
+  model:add(activation())
   model:add(nn.Dropout(0.5))
 end
 

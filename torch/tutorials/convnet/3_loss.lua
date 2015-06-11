@@ -1,23 +1,8 @@
-----------------------------------------------------------------------
--- This script demonstrates how to define a couple of different
--- loss functions:
---   + negative-log likelihood, using log-normalized output units (SoftMax)
---   + mean-square error
---   + margin loss (SVM-like)
---
--- Clement Farabet
-----------------------------------------------------------------------
-
--- require 'torch'   -- torch
--- require 'nn'      -- provides all sorts of loss functions
-
 require 'cutorch'
 require 'fbcunn'
 require('fb.luaunit')
 local torch = require('fbtorch')
 
-----------------------------------------------------------------------
--- parse command line arguments
 if not opt then
    print '==> processing options'
    cmd = torch.CmdLine()
@@ -26,6 +11,7 @@ if not opt then
    cmd:text()
    cmd:text('Options:')
    cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
+   cmd:option('-type', 'double', 'type: double | float | cuda')
    cmd:text()
    opt = cmd:parse(arg or {})
 
@@ -33,20 +19,15 @@ if not opt then
    model = nn.Sequential()
 end
 
-
-----------------------------------------------------------------------
 print '==> define loss'
 
 if opt.loss == 'margin' then
-
   nclasses = 2
   -- This loss takes a vector of classes, and the index of
   -- the grountruth class as arguments. It is an SVM-like loss
   -- with a default margin of 1.
   criterion = nn.MultiMarginCriterion()
-
 elseif opt.loss == 'nll' then
-
   nclasses = 2
   -- This loss takes a vector of classes, and the index of
   -- This loss requires the outputs of the trainable model to
@@ -59,10 +40,7 @@ elseif opt.loss == 'nll' then
   -- as arguments.
 
   criterion = nn.ClassNLLCriterion()
-
 elseif opt.loss == 'mse' then
-  -- nclasses = 80
-
   -- for MSE, we add a tanh, to restrict the model's output
   -- model:add(nn.Tanh())
 
@@ -77,35 +55,10 @@ elseif opt.loss == 'mse' then
   -- Compared to the other losses, the MSE criterion needs a distribution
   -- as a target, instead of an index. Indeed, it is a regression loss!
   -- So we need to transform the entire label vectors:
-
-  --[[
-  if trainData then
-    -- convert training labels:
-    local trsize = (#trainData.labels)[1]
-    local trlabels = torch.Tensor( trsize, nclasses )
-    trlabels:fill(-1)
-    for i = 1,trsize do
-      trlabels[{ i,trainData.labels[i] }] = 1
-    end
-    trainData.labels = trlabels
-
-    -- convert test labels
-    local tesize = (#testData.labels)[1]
-    local telabels = torch.Tensor( tesize, nclasses )
-    telabels:fill(-1)
-    for i = 1,tesize do
-      telabels[{ i,testData.labels[i] }] = 1
-    end
-    testData.labels = telabels
-  end
-  ]]--
-
-else
-
-   error('unknown -loss')
-
 end
 
-----------------------------------------------------------------------
-print '==> here is the loss function:'
+if cmd.type == 'cuda' then
+  criterion:cuda()
+end
+
 print(criterion)

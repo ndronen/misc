@@ -67,5 +67,6 @@ anOut:write('disabledFilters', disabledFilters)
 anOut:write('indices', predData.indices)
 anOut:write('output', predData.output)
 anOut:write('pred', predData.pred)
+anOut:write('filterWidth', predData.filterWidth)
 
 anOut:close()
