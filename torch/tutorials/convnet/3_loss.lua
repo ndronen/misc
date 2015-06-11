@@ -57,8 +57,4 @@ elseif opt.loss == 'mse' then
   -- So we need to transform the entire label vectors:
 end
 
-if cmd.type == 'cuda' then
-  criterion:cuda()
-end
-
 print(criterion)
