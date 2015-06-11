@@ -38,6 +38,11 @@ for i=1,max_class do
   table.insert(classes, tostring(i))
 end
 
+if opt.type == 'cuda' then
+  model:cuda()
+  criterion:cuda()
+end
+
 print '==> creating confusion matrix'
 -- This matrix records the current confusion across classes
 confusion = optim.ConfusionMatrix(max_class)
