@@ -84,7 +84,7 @@ if opt.fixWords then
   lookupTable = kttorch.FixedLookupTable(lookupTable)
 end
 
-renormer:add(lookupTable, opt.maxWordNorm)
+renormer:add(lookupTable, opt.maxWordNorm, { p=2, dim=2 })
 renormer:renorm()
 
 model:add(lookupTable)

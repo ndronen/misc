@@ -231,7 +231,11 @@ function train()
 
   for i,module in ipairs(model:listModules()) do
     if module.weight ~= nil then
-      norms = module.weight:norm(2, 2)
+      if torch.isTypeOf(module, 'nn.LookupTable') then
+        norms = module.weight:norm(2, 1)
+      else
+        norms = module.weight:norm(2, 2)
+      end
       normsLogger:add({
         string.format('%d', epoch),
         string.format('%d', i),
