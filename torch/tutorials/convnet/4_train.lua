@@ -25,6 +25,7 @@ if not opt then
    cmd:option('-maxWordNorm', 20, 'maximum 2-norm of word representations in lookup table')
    cmd:option('-t0', 1, 'start averaging at t0 (ASGD only), in nb of epochs')
    cmd:option('-renormFreq', 5, 'number of epochs after which to renorm weights')
+   cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
@@ -188,26 +189,36 @@ function train()
          optimMethod(feval, parameters, optimState)
       end
 
-      -- p = 2
-      -- renormDim = 1
-      if epoch % opt.renormFreq == 0 then
-        renormer:renorm()
-        --[[
-        -- Rescale weights of fully-connected layers.
-        for i,module in ipairs(model:findModules('nn.Linear')) do
-          if module.weight ~= nil then
-            module.weight:renorm(p, renormDim, opt.maxNorm)
-          end
-        end
-
-        -- Rescale word representations.
+      -- Zero the weights of the zero vector.
+      if opt.zeroVector and opt.zeroVector ~= 0 then
         for i,module in ipairs(model:listModules()) do
           if torch.isTypeOf(module, 'nn.LookupTable') then
-            module.weight:renorm(p, renormDim, opt.maxWordNorm)
+            module.weight[opt.zeroVector]:zero()
           end
         end
-      --]]
       end
+   end
+
+   p = 2
+   renormDim = 1
+   if epoch % opt.renormFreq == 0 then
+     -- Rescale weights of fully-connected and convolutional layers.
+     renormer:renorm()
+
+     -- Rescale word representations.  I can't use Renormer to do this yet.
+     for i,module in ipairs(model:listModules()) do
+       if torch.isTypeOf(module, 'nn.LookupTable') then
+         -- The following commented-out line of code is what I should be
+         -- able to run, but it causes an error that I haven't been able
+         -- to track down.  The uncommented-out line is the workaround.
+         -- module.weight:renorm(p, renormDim, opt.maxWordNorm)
+         weight = module.weight:clone():float():renorm(p, renormDim, opt.maxWordNorm)
+         if opt.type == 'cuda' then
+           weight = weight:cuda()
+         end
+         module.weight = weight
+       end
+     end
    end
 
    -- time taken
@@ -231,11 +242,7 @@ function train()
 
   for i,module in ipairs(model:listModules()) do
     if module.weight ~= nil then
-      if torch.isTypeOf(module, 'nn.LookupTable') then
-        norms = module.weight:norm(2, 1)
-      else
-        norms = module.weight:norm(2, 2)
-      end
+      norms = module.weight:norm(2, 2)
       normsLogger:add({
         string.format('%d', epoch),
         string.format('%d', i),

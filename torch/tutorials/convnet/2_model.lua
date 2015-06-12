@@ -84,9 +84,7 @@ if opt.fixWords then
   lookupTable = kttorch.FixedLookupTable(lookupTable)
 end
 
-renormer:add(lookupTable, opt.maxWordNorm, { p=2, dim=2 })
-renormer:renorm()
-
+lookupTable.weight:renorm(2, 1, opt.maxWordNorm)
 model:add(lookupTable)
 
 if opt.spatial then
@@ -154,5 +152,3 @@ model:add(nn.Linear(penultimateOutput, noutputs))
 if opt.type == 'cuda' then
   model:cuda()
 end
-
-print(model:parameters())
