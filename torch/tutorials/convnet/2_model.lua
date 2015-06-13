@@ -18,7 +18,7 @@ if not opt then
   cmd:option('-nKernels', 500, 'number of kernels: 2 or greater')
   cmd:option('-nFullyConnectedLayers', '1', 'number of extra fully-connected layers after convolutional layers')
   cmd:option('-lookupOnGpu', true, 'put the lookup table on the GPU')
-  cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
+  cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]; 0 means there is no zero vector')
   cmd:option('-wordDims', 50, 'number of dimensions of word representations')
   cmd:option('-word2Vec', false, 'use pretrained word2vec weights in lookup table')
   cmd:option('-fixWords', false, 'disable updates of word representations')
@@ -59,7 +59,9 @@ k = 1
 model = nn.Sequential()
 renormer = kttorch.Renormer()
 
-model:add(kttorch.LookupTableInputZeroer(0.2, opt.zeroVector))
+if opt.zeroVector ~= 0 then
+  model:add(kttorch.LookupTableInputZeroer(0.2, opt.zeroVector))
+end
 
 local lookupTable = nil
 if opt.type == 'cuda' then
@@ -78,7 +80,9 @@ if opt.word2Vec then
   lookupTable.weight:copy(word2VecData.weight)
 end
 
-lookupTable.weight[opt.zeroVector]:zero()
+if opt.zeroVector ~= 0 then
+  lookupTable.weight[opt.zeroVector]:zero()
+end
 
 if opt.fixWords then
   lookupTable = kttorch.FixedLookupTable(lookupTable)
