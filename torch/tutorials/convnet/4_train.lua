@@ -24,7 +24,7 @@ if not opt then
    cmd:option('-maxNorm', 10, 'maximum 2-norm of neuron weights in fully-connected layers') 
    cmd:option('-maxWordNorm', 20, 'maximum 2-norm of word representations in lookup table')
    cmd:option('-t0', 1, 'start averaging at t0 (ASGD only), in nb of epochs')
-   cmd:option('-renormFreq', 0, 'number of epochs after which to renorm weights')
+   cmd:option('-renormFreq', 0, 'number of updates after which to renorm weights')
    cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
    cmd:text()
    opt = cmd:parse(arg or {})
@@ -103,7 +103,10 @@ function train()
    print('==> doing epoch on training data:')
    print("==> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
 
+   local iter = 0
    for t = 1,trainData:size(),opt.batchSize do
+     iter = iter + 1
+
       -- disp progress
       xlua.progress(t, trainData:size())
 
@@ -189,10 +192,7 @@ function train()
          optimMethod(feval, parameters, optimState)
       end
 
-      -- Zero the weights of the zero vector.  Commenting
-      -- this out for now; it appears to cause the network
-      -- to fail to get off the ground.  
-      --[[
+      -- If there's a zero vector, ensure that it's always 0.
       if opt.zeroVector and opt.zeroVector ~= 0 then
         for i,module in ipairs(model:listModules()) do
           if torch.isTypeOf(module, 'nn.LookupTable') then
@@ -200,28 +200,27 @@ function train()
           end
         end
       end
-      --]]
-   end
 
-   p = 2
-   renormDim = 1
+     p = 2
+     renormDim = 1
 
-   if (opt.renormFreq > 0) and (epoch % opt.renormFreq == 0) then
-     -- Rescale weights of fully-connected and convolutional layers.
-     renormer:renorm()
-
-     -- Rescale word representations.  I can't use Renormer to do this yet.
-     for i,module in ipairs(model:listModules()) do
-       if torch.isTypeOf(module, 'nn.LookupTable') then
-         -- The following commented-out line of code is what I should be
-         -- able to run, but it causes an error that I haven't been able
-         -- to track down.  The uncommented-out line is the workaround.
-         -- module.weight:renorm(p, renormDim, opt.maxWordNorm)
-         weight = module.weight:clone():float():renorm(p, renormDim, opt.maxWordNorm)
-         if opt.type == 'cuda' then
-           weight = weight:cuda()
+     if (opt.renormFreq > 0) and (iter % opt.renormFreq == 0) then
+       -- Rescale weights of fully-connected and convolutional layers.
+       renormer:renorm()
+  
+       -- Rescale word representations.  I can't use Renormer to do this yet.
+       for i,module in ipairs(model:listModules()) do
+         if torch.isTypeOf(module, 'nn.LookupTable') then
+           -- The following commented-out line of code is what I should be
+           -- able to run, but it causes an error that I haven't been able
+           -- to track down.  The uncommented-out line is the workaround.
+           -- module.weight:renorm(p, renormDim, opt.maxWordNorm)
+           weight = module.weight:clone():float():renorm(p, renormDim, opt.maxWordNorm)
+           if opt.type == 'cuda' then
+             weight = weight:cuda()
+           end
+           module.weight = weight
          end
-         module.weight = weight
        end
      end
    end
