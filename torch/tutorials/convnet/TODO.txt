@@ -1,18 +1,45 @@
-* Model enhancements
+* The zero vector appears to have an inordinate influence on training
+  performance.   Re-setting it to zero after each weight update seems
+  to trip up optimization process; performance goes from the initial
+  random state to some improvement, then back down to random, where it
+  seems to stay.
+
+* Curriculum learning
+    * Try training first using only long positive and negative examples.
+    * After each epoch, evaluate the model separately on short examples
+      and long examples.
+    * If performance improves nicely, gradually introduce short examples
+      into the training set.
+
+* Model enhancements:
+  * I'd like the output of a filter to be a richer description of the
+    configuration of the sequence of word vectors.  In a temporal 
+    convolutional network, applying a filter to a sentence outputs a
+    scalar value for each position in the sentence.   If the discrete
+    convolution were replaced by a dot product at each position in the
+    sentence, the output would be a kXk matrix for each position (where
+    k is the temporal width of the filter).  The ij-th entry of those
+    matrices would contain the dot product of the i-th filter row and
+    the j-th word vector of an input sequence.
+    
     * Create layer to shatter the sentence matrix created by a LookupTable
       into an nFilters X filterWidth X wordDim 3-tensor.
     * Copy and modify nn.MM so that it has its own 3-tensor of weights
       (of size nFilters X wordDim X filterWidth) and that it accumulates
       the gradient.
+
 * Data sets:
     * BNC
     * Wikipedia (same size as BNC)
     * Wikipedia (much larger)
     * Sentences from ASAP short answer data set
+
 * Models
     * Temporal convolutional network
-    * Kalchbrenner network
+    * Spatial convolutional network
+    * Dynamic spatial convolutional network (DCNN, Kalchbrenner)
     * RNN language model (co-trained with logistic layer?)
+
 * Error analysis:
     * Get test set predictions from a model.
     * Get indices of activations for each sentence in test set.
@@ -26,12 +53,12 @@
               of the filter is copied to the words at positions i,
               i+1, ..., i+k-1.)
             * Do the same for the negative filters.
-* Use Renormer module in 4_train.lua.
-* Optionally renorm the Word2Vec weights to unit length before training.
+
 * Create layer to record summary statistics about a layer's
   post-activation outputs.  This can help diagnose problems
   with weight initialization -- particularly for deeper
   networks.
+
 * I would like to be able to use TemporalConvolutionFB, but I get
   an error about tensor size when I do.  Put some print statements
   into the C code to isolate the problem, fix the code, and submit
@@ -40,12 +67,13 @@
   methods in fbcunn/src/ConvolutionBias.cu.  I opened this issue
   against the problem:
     https://github.com/facebook/fbcunn/issues/62
-* I want to be able keep the word representations on the surface
-  of the L2 ball (i.e. to renorm them to L2 length 1 after every
-  minibatch), but the renorm call is failing with a CUDA error.
-  I haven't been able to reproduce the error using a minimal
-  working example.  My current workaround is to renormalize the
-  dimensions of the word representations to l2 unit length.
+
+* I want to be able keep the word representations on the surface of
+  the L2 ball (i.e. to renorm them to L2 length 1 after every minibatch),
+  but the renorm call is failing with a CUDA error.  I haven't been able
+  to reproduce the error using a minimal working example.  My workaround
+  is to copy the weights, renormalize them, then assign them back to
+  the lookup table.
 
 == DONE ==
 
@@ -94,3 +122,5 @@
   be optional and off by default.  The training data is assumed to
   be sorted randomly already, so select the validation set from the
   last n training examples.
+
+* Use Renormer module in 4_train.lua.
