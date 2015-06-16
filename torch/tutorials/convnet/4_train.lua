@@ -26,6 +26,7 @@ if not opt then
    cmd:option('-t0', 1, 'start averaging at t0 (ASGD only), in nb of epochs')
    cmd:option('-renormFreq', 0, 'number of updates after which to renorm weights')
    cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]; 0 means there is no zero vector')
+   cmd:option('-zeroZeroVector', false, 'always undo any weight updates to the unknown word zero vector')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
@@ -203,7 +204,7 @@ function train()
       end
 
       -- If there's a zero vector, ensure that it's always 0.
-      if opt.zeroVector ~= 0 then
+      if opt.zeroZeroVector then
         for i,module in ipairs(model:listModules()) do
           if torch.isTypeOf(module, 'nn.LookupTable') then
             module.weight[opt.zeroVector]:zero()

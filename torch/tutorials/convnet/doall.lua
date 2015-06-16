@@ -32,12 +32,12 @@ cmd:option('-t0', 1, 'start averaging at t0 (ASGD only), in nb of epochs')
 cmd:option('-maxIter', 2, 'maximum nb of iterations for CG and LBFGS')
 cmd:option('-type', 'double', 'type: double | float | cuda')
 cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]; 0 means there is no zero vector')
+cmd:option('-zeroZeroVector', false, 'always undo any weight updates to the unknown word zero vector')
 cmd:option('-padding', 2, 'the number of leading and trailing zero-padding entries per sentence')
 cmd:option('-size', 'all', 'how many samples do we load for training: all | smakll')
 cmd:option('-kernelWidth', 2, 'width of kernels: 2 or greater')
 cmd:option('-nKernels', 500, 'number of kernels: 2 or greater')
 cmd:option('-nFullyConnectedLayers', '1', 'number of extra fully-connected layers after convolutional layers')
-cmd:option('-lookupOnGpu', true, 'put the lookup table on the GPU')
 cmd:option('-maxNorm', 1, 'maximum 2-norm of neuron weights in fully-connected layers')
 cmd:option('-maxWordNorm', 1, 'maximum 2-norm of word representations in lookup table')
 cmd:option('-wordDims', 50, 'number of dimensions of word representations')
@@ -57,8 +57,15 @@ elseif opt.type == 'cuda' then
    require 'cunn'
    torch.setdefaulttensortype('torch.FloatTensor')
 end
+
 torch.setnumthreads(opt.threads)
 torch.manualSeed(opt.seed)
+
+if opt.zeroZeroVector then
+  if opt.zeroVector == 0 then
+    error('Use -zeroVector INDEX with -zeroZeroVector')
+  end
+end
 
 print('1_data.lua')
 dofile '1_data.lua'

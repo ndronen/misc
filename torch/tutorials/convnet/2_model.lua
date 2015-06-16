@@ -17,8 +17,8 @@ if not opt then
   cmd:option('-kernelWidth', 3, 'width of kernels: 2 or greater')
   cmd:option('-nKernels', 500, 'number of kernels: 2 or greater')
   cmd:option('-nFullyConnectedLayers', '1', 'number of extra fully-connected layers after convolutional layers')
-  cmd:option('-lookupOnGpu', true, 'put the lookup table on the GPU')
   cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]; 0 means there is no zero vector')
+  cmd:option('-zeroZeroVector', false, 'always undo any weight updates to the unknown word zero vector')
   cmd:option('-wordDims', 50, 'number of dimensions of word representations')
   cmd:option('-word2Vec', false, 'use pretrained word2vec weights in lookup table')
   cmd:option('-fixWords', false, 'disable updates of word representations')
@@ -68,12 +68,9 @@ if opt.zeroVector ~= 0 then
 end
 
 local lookupTable = nil
+
 if opt.type == 'cuda' then
-  if opt.lookupOnGpu then
-    lookupTable = nn.LookupTableGPU(nWords, opt.wordDims)
-  else
-    lookupTable = nn.LookupTable(nWords, opt.wordDims)
-  end
+  lookupTable = nn.LookupTableGPU(nWords, opt.wordDims)
 else
   lookupTable = nn.LookupTable(nWords, opt.wordDims)
 end
@@ -84,7 +81,7 @@ if opt.word2Vec then
   lookupTable.weight:copy(word2VecData.weight)
 end
 
-if opt.zeroVector ~= 0 then
+if opt.zeroZeroVector then
   lookupTable.weight[opt.zeroVector]:zero()
 end
 
