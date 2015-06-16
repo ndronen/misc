@@ -158,8 +158,8 @@ if opt.spatial then
 
   -- model:add(nn.Dropout(0.5))
   -- model:add(kttorch.InputPrinter('View (output of Parallel)'))
-  ninput = 15
-  penultimateOutput = 15
+  ninput = l2NFilters
+  penultimateOutput = l2NFilters
   model:add(nn.View(penultimateOutput))
 else
   -- if opt.type == 'cuda' then
