@@ -25,7 +25,7 @@ if not opt then
    cmd:option('-maxWordNorm', 20, 'maximum 2-norm of word representations in lookup table')
    cmd:option('-t0', 1, 'start averaging at t0 (ASGD only), in nb of epochs')
    cmd:option('-renormFreq', 0, 'number of updates after which to renorm weights')
-  cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]; 0 means there is no zero vector')
+   cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]; 0 means there is no zero vector')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
@@ -140,9 +140,10 @@ function train()
                        for i = 1,#inputs do
                           -- input = inputs[i]:clone():cuda()
                           local input = inputs[i]
+
                           local output = model:forward(input)
                           local targs = targets[i]
-                          local targs = nil
+
                           if opt.loss == 'mse' then
                             if opt.type == 'cuda' then
                               targs = torch.CudaTensor(1)
@@ -151,7 +152,16 @@ function train()
                             end
                             targs[1] = targets[i]
                           else
-                            targs = targets[i]
+                            if opt.spatial then
+                              if opt.type == 'cuda' then
+                                targs = torch.CudaTensor(1)
+                              else
+                                targs = torch.Tensor(1)
+                              end
+                              targs[1] = targets[i]
+                            else
+                              targs = targets[i]
+                            end
                           end
 
                           local err = criterion:forward(output, targs)
