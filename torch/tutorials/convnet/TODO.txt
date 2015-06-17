@@ -1,0 +1,126 @@
+* Data sets:
+    * BNC
+    * Wikipedia (same size as BNC)
+    * Wikipedia (much larger)
+    * Sentences from ASAP short answer data set
+
+* Models
+    * Temporal convolutional network
+    * Spatial convolutional network
+    * Dynamic spatial convolutional network (DCNN, Kalchbrenner)
+    * RNN language model (co-trained with logistic layer?)
+
+* Error analysis:
+    * Get test set predictions from a model.
+    * Get indices of activations for each sentence in test set.
+    * Classify features as either positive or negative.
+    * Here the workflow changes to Python:
+        * For each sentence 
+            * Get outputs/indices of activations from positive filters.
+            * Then, for each position in the sentence, sum the outputs
+              of the positive filters.  (If a filter is activated at
+              position i, and the filter is of width k, the output 
+              of the filter is copied to the words at positions i,
+              i+1, ..., i+k-1.)
+            * Do the same for the negative filters.
+
+* Curriculum learning
+    * Try training first using only long positive and negative examples.
+    * After each epoch, evaluate the model separately on short examples
+      and long examples.
+    * If performance improves nicely, gradually introduce short examples
+      into the training set.
+
+* Model enhancements:
+  * I'd like the output of a filter to be a richer description of the
+    configuration of the sequence of word vectors.  In a temporal 
+    convolutional network, applying a filter to a sentence outputs a
+    scalar value for each position in the sentence.   If the discrete
+    convolution were replaced by a dot product at each position in the
+    sentence, the output would be a kXk matrix for each position (where
+    k is the temporal width of the filter).  The ij-th entry of those
+    matrices would contain the dot product of the i-th filter row and
+    the j-th word vector of an input sequence.
+    
+    * Create layer to shatter the sentence matrix created by a LookupTable
+      into an nFilters X filterWidth X wordDim 3-tensor.
+    * Copy and modify nn.MM so that it has its own 3-tensor of weights
+      (of size nFilters X wordDim X filterWidth) and that it accumulates
+      the gradient.
+
+* Create layer to record summary statistics about a layer's
+  post-activation outputs.  This can help diagnose problems
+  with weight initialization -- particularly for deeper
+  networks.
+
+* I would like to be able to use TemporalConvolutionFB, but I get
+  an error about tensor size when I do.  Put some print statements
+  into the C code to isolate the problem, fix the code, and submit
+  a pull request for fbcunn.  Note: this appears to be caused by
+  a faulty assumption about the size of outputTH in one of the
+  methods in fbcunn/src/ConvolutionBias.cu.  I opened this issue
+  against the problem:
+    https://github.com/facebook/fbcunn/issues/62
+
+* I want to be able keep the word representations on the surface of
+  the L2 ball (i.e. to renorm them to L2 length 1 after every minibatch),
+  but the renorm call is failing with a CUDA error.  I haven't been able
+  to reproduce the error using a minimal working example.  My workaround
+  is to copy the weights, renormalize them, then assign them back to
+  the lookup table.
+
+== DONE ==
+
+* Create renorming module to enable easy selective renorming of layers.
+
+    model = nn.Sequential()
+    layer = nn.Linear(10, 5)
+    model:add(layer)
+
+    -- e.g.
+    renormer = kttorch.Renormer()
+    renormer:add(layer, 10)
+    -- or
+    renormer:add(layer, 10, { p=2, dim=1 })
+    -- then
+    renormer:renorm()
+
+* Create dropout layers intended to appear prior to a LookupTable.  The
+  layers are intended to drop words from the input.  Ways of dropping
+  words from the input include but are not limited to:
+    * Deleting elements from the input with some fixed probability.
+    * Setting elements of the input to the index of the zero vector
+      (in the weight matrix of the downstream LookupTable) with
+     some fixed probability.
+  Another possibility is to allow the dropout probability to vary
+  based on some characteristic of the training data (e.g. word
+  frequencies).
+
+* Re-add Dropout(0.5) for the temporal pooling layer.
+
+* Create a FixedLookupTable class that delegates either to
+  LookupTable or LookupTableGPU but has an empty parameter
+  accumulation method, so the word representations aren't
+  parameters of the model.
+
+* Try training with word2vec and FixedLookupTable, on the assumption
+  that doing so will reduce the number of trainable parameters of
+  the model and thereby reduce overfitting.
+
+* Refactor the test funcstion in 5_test.lua to take a data set as
+  an argument.  This will make it possible and easy for the validation
+  and test sets both to be optional.
+
+* Change 1_data.lua to pull a validation set of some user-specified
+  number of sentences out of the training set.  This behavior should
+  be optional and off by default.  The training data is assumed to
+  be sorted randomly already, so select the validation set from the
+  last n training examples.
+
+* Use Renormer module in 4_train.lua.
+
+* The zero vector appears to have an inordinate influence on training
+  performance.   Re-setting it to zero after each weight update seems
+  to trip up optimization process; performance goes from the initial
+  random state to some improvement, then back down to random, where it
+  seems to stay.

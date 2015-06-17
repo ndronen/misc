@@ -1,19 +1,3 @@
-----------------------------------------------------------------------
--- This script demonstrates how to define a training procedure,
--- irrespective of the model/loss functions chosen.
---
--- It shows how to:
---   + construct mini-batches on the fly
---   + define a closure to estimate (a noisy) loss
---     function, as well as its derivatives wrt the parameters of the
---     model to be trained
---   + optimize the function, according to several optmization
---     methods: SGD, L-BFGS.
---
--- Clement Farabet
-----------------------------------------------------------------------
-
--- require 'torch'   -- torch
 require 'xlua'    -- xlua provides useful tools, like progress bars
 require 'optim'   -- an optimization package, for online and batch methods
 
@@ -22,8 +6,6 @@ require 'fbcunn'
 require('fb.luaunit')
 local torch = require('fbtorch')
 
-----------------------------------------------------------------------
--- parse command line arguments
 if not opt then
    print '==> processing options'
    cmd = torch.CmdLine()
@@ -39,47 +21,42 @@ if not opt then
    cmd:option('-batchSize', 1, 'mini-batch size (1 = pure stochastic)')
    cmd:option('-weightDecay', 0, 'weight decay (SGD only)')
    cmd:option('-momentum', 0, 'momentum (SGD only)')
+   cmd:option('-maxNorm', 10, 'maximum 2-norm of neuron weights in fully-connected layers') 
+   cmd:option('-maxWordNorm', 20, 'maximum 2-norm of word representations in lookup table')
    cmd:option('-t0', 1, 'start averaging at t0 (ASGD only), in nb of epochs')
+   cmd:option('-renormFreq', 0, 'number of updates after which to renorm weights')
+   cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]; 0 means there is no zero vector')
+   cmd:option('-zeroZeroVector', false, 'always undo any weight updates to the unknown word zero vector')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
 
-----------------------------------------------------------------------
--- CUDA?
-if opt.type == 'cuda' then
-   model:cuda()
-   criterion:cuda()
-end
-
-----------------------------------------------------------------------
-print '==> defining some tools'
-
--- classes
+print '==> setting up classes'
 local classes = {}
 min_class = 1
 max_class = torch.max(trainData.labels)
+print('==> setting up classes ' .. min_class .. ' ' .. max_class)
 for i=1,max_class do 
   table.insert(classes, tostring(i))
 end
 
+if opt.type == 'cuda' then
+  model:cuda()
+  criterion:cuda()
+end
+
+print '==> creating confusion matrix'
 -- This matrix records the current confusion across classes
 confusion = optim.ConfusionMatrix(max_class)
 
--- Log results to files
-trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
-testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
-normsLogger = optim.Logger(paths.concat(opt.save, 'norms.log'))
-normsLogger:setNames({'epoch', 'layer#', 'module', 'min', 'max', 'mean'})
-
 -- Retrieve parameters and gradients:
--- this extracts and flattens all the trainable parameters of the mode
+-- this extracts and flattens all the trainable parameters of the model
 -- into a 1-dim vector
-if model then
-   parameters,gradParameters = model:getParameters()
-end
 
-----------------------------------------------------------------------
-print '==> configuring optimizer'
+print '==> getting initial parameters'
+if model then
+   parameters, gradParameters = model:getParameters()
+end
 
 if opt.optimization == 'SGD' then
    optimState = {
@@ -111,7 +88,6 @@ end
 print '==> defining training procedure'
 
 function train()
-
    -- epoch tracker
    epoch = epoch or 1
 
@@ -122,14 +98,16 @@ function train()
    model:training()
 
    -- shuffle at each epoch
-   print 'trsize'
-   print(trsize)
    shuffle = torch.randperm(trsize)
 
    -- do one epoch
    print('==> doing epoch on training data:')
    print("==> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
+
+   local iter = 0
    for t = 1,trainData:size(),opt.batchSize do
+     iter = iter + 1
+
       -- disp progress
       xlua.progress(t, trainData:size())
 
@@ -161,29 +139,12 @@ function train()
 
                        -- evaluate function for complete mini batch
                        for i = 1,#inputs do
-                          -- estimate f
-                          -- print('i')
-                          -- print(i)
-                          -- print('inputs')
-                          -- print(inputs)
-                          -- print(inputs[i])
-                          input = inputs[i]:clone():cuda()
-                          -- local output = model:forward(inputs[i])
-                          local output = model:forward(input)
-                          --[[
-                          print 'output'
-                          print(output)
-                          print 'targets'
-                          print(targets[i])
-                          --]]
+                          -- input = inputs[i]:clone():cuda()
+                          local input = inputs[i]
 
-                          --print('output')
-                          --print(output)
-                          -- print('targets[i]')
-                          -- print(targets[i])
-                          --print('targets')
-                          --print(targets)
-                          local targs = nil
+                          local output = model:forward(input)
+                          local targs = targets[i]
+
                           if opt.loss == 'mse' then
                             if opt.type == 'cuda' then
                               targs = torch.CudaTensor(1)
@@ -192,29 +153,25 @@ function train()
                             end
                             targs[1] = targets[i]
                           else
-                            targs = targets[i]
+                            if opt.spatial then
+                              if opt.type == 'cuda' then
+                                targs = torch.CudaTensor(1)
+                              else
+                                targs = torch.Tensor(1)
+                              end
+                              targs[1] = targets[i]
+                            else
+                              targs = targets[i]
+                            end
                           end
-                          --print('targs')
-                          --print(targs)
-                          --
-                            
-                          -- local err = criterion:forward(output, targets[i])
+
                           local err = criterion:forward(output, targs)
                           f = f + err
 
                           -- estimate df/dW
-                          -- local df_do = criterion:backward(output, targets[i])
                           local df_do = criterion:backward(output, targs)
-                          -- model:backward(inputs[i], df_do)
-                          -- model:backward(inputs[i], df_do)
                           model:backward(input, df_do)
 
-                          -- update confusion
-                          -- confusion:add(output, targets[i])
-                          --[[
-                          print('output (original)')
-                          print(output)
-                          --]]
                           if opt.loss == 'mse' then
                             if output[1] > max_class then
                               output[1] = max_class
@@ -223,12 +180,7 @@ function train()
                             end
                             output = torch.round(output)[1]
                           end
-                          --[[
-                          print('output (modified)')
-                          print(output)
-                          print('targs')
-                          print(targs)
-                          --]]
+
                           if torch.isTensor(targs) then
                             confusion:add(output, targs[1])
                           else
@@ -241,7 +193,7 @@ function train()
                        f = f/#inputs
 
                        -- return f and df/dX
-                       return f,gradParameters
+                       return f, gradParameters
                     end
 
       -- Optimize on current mini-batch.
@@ -251,15 +203,37 @@ function train()
          optimMethod(feval, parameters, optimState)
       end
 
-      maxNorm = 1
-      renormDim = 1
-      p = 2
-      -- Rescale weights of fully-connected layers.
-      for i,module in ipairs(model:findModules('nn.Linear')) do
-        if module.weight ~= nil then
-          module.weight:renorm(p, renormDim, maxNorm)
+      -- If there's a zero vector, ensure that it's always 0.
+      if opt.zeroZeroVector then
+        for i,module in ipairs(model:listModules()) do
+          if torch.isTypeOf(module, 'nn.LookupTable') then
+            module.weight[opt.zeroVector]:zero()
+          end
         end
       end
+
+     p = 2
+     renormDim = 1
+
+     if (opt.renormFreq > 0) and (iter % opt.renormFreq == 0) then
+       -- Rescale weights of fully-connected and convolutional layers.
+       renormer:renorm()
+  
+       -- Rescale word representations.  I can't use Renormer to do this yet.
+       for i,module in ipairs(model:listModules()) do
+         if torch.isTypeOf(module, 'nn.LookupTable') then
+           -- The following commented-out line of code is what I should be
+           -- able to run, but it causes an error that I haven't been able
+           -- to track down.  The uncommented-out line is the workaround.
+           -- module.weight:renorm(p, renormDim, opt.maxWordNorm)
+           weight = module.weight:clone():float():renorm(p, renormDim, opt.maxWordNorm)
+           if opt.type == 'cuda' then
+             weight = weight:cuda()
+           end
+           module.weight = weight
+         end
+       end
+     end
    end
 
    -- time taken
@@ -272,10 +246,6 @@ function train()
 
    -- update logger/plot
    trainLogger:add{['% mean class accuracy (train set)'] = confusion.totalValid * 100}
-   if opt.plot then
-      trainLogger:style{['% mean class accuracy (train set)'] = '-'}
-      trainLogger:plot()
-   end
 
    -- TODO: log summary statistic of model weights.
 
@@ -287,7 +257,6 @@ function train()
 
   for i,module in ipairs(model:listModules()) do
     if module.weight ~= nil then
-      -- norms = torch.pow(module.weight, 2):sum(2)
       norms = module.weight:norm(2, 2)
       normsLogger:add({
         string.format('%d', epoch),
