@@ -7,7 +7,7 @@ if not opt then
    print '==> processing options'
    cmd = torch.CmdLine()
    cmd:text()
-   cmd:text('SVHN Loss Function')
+   cmd:text('Grammaticality model loss')
    cmd:text()
    cmd:text('Options:')
    cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')

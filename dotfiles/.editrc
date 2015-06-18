@@ -1,0 +1,11 @@
+# disk space is cheap...
+history size 1000000
+history unique 1
+
+# emacs bindings by default
+bind -v
+
+# Tab complete
+bind \\t rl_complete
+bind ^l ed-clear-screen
+bind ^r em-inc-search-prev

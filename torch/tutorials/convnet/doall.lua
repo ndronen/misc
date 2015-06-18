@@ -11,7 +11,7 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 cmd = torch.CmdLine()
 cmd:text()
-cmd:text('Train a CNN')
+cmd:text('Grammaticality model')
 cmd:text()
 cmd:text('Options:')
 -- global:
@@ -34,7 +34,7 @@ cmd:option('-type', 'double', 'type: double | float | cuda')
 cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]; 0 means there is no zero vector')
 cmd:option('-zeroZeroVector', false, 'always undo any weight updates to the unknown word zero vector')
 cmd:option('-padding', 2, 'the number of leading and trailing zero-padding entries per sentence')
-cmd:option('-size', 'all', 'how many samples do we load for training: all | smakll')
+-- cmd:option('-size', 'all', 'how many samples do we load for training: all | smakll')
 cmd:option('-kernelWidth', 2, 'width of kernels: 2 or greater')
 cmd:option('-nKernels', 500, 'number of kernels: 2 or greater')
 cmd:option('-nFullyConnectedLayers', '1', 'number of extra fully-connected layers after convolutional layers')
@@ -43,7 +43,8 @@ cmd:option('-maxWordNorm', 1, 'maximum 2-norm of word representations in lookup 
 cmd:option('-wordDims', 50, 'number of dimensions of word representations')
 cmd:option('-word2Vec', false, 'use pretrained word2vec weights in lookup table')
 cmd:option('-fixWords', false, 'disable updates of word representations')
-cmd:option('-nValidation', 0, 'size of the validation set to hold out from training')
+cmd:option('-nTrain', 1, 'size of the training set; taken from first nTrain elements of training set')
+cmd:option('-nValidation', 0, 'size of the validation set to hold out from training; taken from last nValidation elements of training set')
 cmd:option('-test', false, 'whether to load and predict on test set')
 cmd:option('-activation', 'relu', 'activation function: relu | tanh')
 cmd:option('-renormFreq', 0, 'number of updates after which to renorm weights')
@@ -87,6 +88,7 @@ normsLogger = optim.Logger(paths.concat(opt.save, 'norms.log'))
 normsLogger:setNames({'epoch', 'layer#', 'module', 'min', 'max', 'mean'})
 
 while true do
+  -- TODO: change train() to return error.
   train()
   -- TODO: change test() to return error; save the model here if validation
   -- performance is best one yet.

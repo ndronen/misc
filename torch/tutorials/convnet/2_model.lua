@@ -8,7 +8,7 @@ local torch = require('fbtorch')
 if not opt then
   cmd = torch.CmdLine()
   cmd:text()
-  cmd:text('SVHN Model Definition')
+  cmd:text('Grammaticality model definition')
   cmd:text()
   cmd:text('Options:')
   cmd:option('-type', 'double', 'type: double | float | cuda')

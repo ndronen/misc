@@ -2,101 +2,98 @@ require 'torch'   -- torch
 require 'image'   -- for color transforms
 require 'hdf5'
 
+--[[
+Input labels are 0 for negative example, 1 for positive example.
+Transform these to (max length-num words) for negative examples and (max
+length+num words) for positive examples.  This should cause the model
+to try to place extremely short positive and negative examples near one
+another and to place extremely long positive and negative examples far
+from one another.
+--]]
+local scaleRegressionTargets = function(dataset, zeroVectorIndex, padding)
+  -- Make a binary mask of the unknown or zero-padding words in each sentence.
+  zeroVectorMask = dataset.X:eq(zeroVectorIndex):int()
+
+  --[[
+  Count the unknown and zero-padding words in each sentence by summing
+  along the rows, then subtract the number of zero-padding words,
+  since they don't add to the length of the sentence.
+  --]]
+  numZero = torch.sum(zeroVectorMask, 2) - 2*padding
+  numZero = numZero:reshape(numZero:nElement())
+  numZero[torch.lt(numZero, 1)] = 1
+
+  --[[
+  Make a mask of the two types of examples and use them to update the
+  regression targets.
+  --]]
+  negMask = dataset.y:eq(1)
+  maxLength = dataset.X:size(2) - 2*padding - 1
+
+  --[[
+  A conditional function:
+    target = maxLength - length if negative example
+    target = maxLength + length if positive example
+  --]]
+  regTargets = numZero
+  regTargets[negMask] = -regTargets[negMask]
+  regTargets = regTargets + maxLength
+
+  -- Rescale.
+  regTargets = torch.round((regTargets:float()/opt.scaleMseTarget))+1
+  return regTargets
+end
+
 if not opt then
    print '==> processing options'
    cmd = torch.CmdLine()
    cmd:text()
-   cmd:text('SVHN Dataset Preprocessing')
+   cmd:text('Grammaticality model data set loading')
    cmd:text()
+   cmd:argument('-trainFile', 'HDF5 file containing training data')
    cmd:text('Options:')
-   cmd:option('-size', 'all', 'how many samples do we load: all | 20k | 1k')
+   cmd:option('-test', false, "whether to predict on test data")
+   cmd:option('-testFile', "nil", 'HDF5 file containing test data')
+   cmd:option('-nTrain', 1, 'size of the training set (taken from first nTrain elements of training set)')
+   cmd:option('-nValidation', 0, 'size of the validation set to hold out from training (taken from last nValidation elements of training set)')
+   cmd:option('-type', 'double', 'type: double | float | cuda')
    cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
    cmd:option('-scaleMseTarget', 0, 'whether to scale the target variable when loss is mse')
    cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
    cmd:option('-padding', 2, 'the number of leading and trailing zero-padding entries per sentence')
-   cmd:option('-type', 'double', 'type: double | float | cuda')
-   cmd:option('-nValidation', 0, 'size of the validation set to hold out from training')
-   cmd:option('-test', false, 'whether to load and predict on test set')
    cmd:text()
    opt = cmd:parse(arg or {})
 end
 
-local trainHdfile = nil
+-- Load data
+local trainHdfFile = hdf5.open(opt.trainFile, 'r')
+local trainHdfData = trainHdfFile:read():all()
 
-if opt.size == '1k' then
-  trainHdfile = hdf5.open('okanohara-train-1k.h5', 'r')
-elseif opt.size == '20k' then
-  trainHdfile = hdf5.open('okanohara-train-20k.h5', 'r')
-else
-  trainHdfile = hdf5.open('okanohara-train.h5', 'r')
-end
-trainDatasets = trainHdfile:read():all()
-
--- Load the test data.
 if opt.test then
-  testHdfile = hdf5.open('okanohara-test.h5', 'r')
-  testDatasets = testHdfile:read():all()
+  testHdfFile = hdf5.open(opt.testFile, 'r')
+  testHdfData = testHdfFile:read():all()
 end
 
+-- Optionally scale the target variable if the loss is mean squared error.
 if (opt.loss == 'mse') and (opt.scaleMseTarget) then
-  --[[
-  Input labels are 0 for negative example, 1 for positive example.
-  Transform these to (max length-num words) for negative examples and
-  (max length+num words) for positive examples.  This should cause the
-  model to try to place extremely short positive and negative examples
-  near one another and to place extremely long positive and negative
-  examples far from one another.
-  --]]
-  local convert_to_regression_targets = function(dataset, unk_or_zero_word_index, padding)
-    -- Make a binary mask of the unknown or zero-padding words in each sentence.
-    unk_or_zero_mask = dataset.X:eq(unk_or_zero_word_index):int()
-
-    --[[
-    Count the unknown and zero-padding words in each sentence by summing
-    along the rows, then subtract the number of zero-padding words,
-    since they don't add to the length of the sentence.
-    --]]
-    num_unk_or_zero = torch.sum(unk_or_zero_mask, 2) - 2*padding
-    num_unk_or_zero = num_unk_or_zero:reshape(num_unk_or_zero:nElement())
-    num_unk_or_zero[torch.lt(num_unk_or_zero, 1)] = 1
-
-    --[[
-    Make a mask of the two types of examples and use them to update the
-    regression targets.
-    --]]
-    neg_mask = dataset.y:eq(1)
-    max_length = dataset.X:size(2) - 2*padding - 1
-
-    --[[
-    A conditional function:
-      target = max_length - length if negative example
-      target = max_length + length if positive example
-    --]]
-    reg_targets = num_unk_or_zero
-    reg_targets[neg_mask] = -reg_targets[neg_mask]
-    reg_targets = reg_targets + max_length
-
-    -- Rescale.
-    reg_targets = torch.round((reg_targets:float()/opt.scaleMseTarget))+1
-    return reg_targets
-  end
-
-  trainDatasets.y = convert_to_regression_targets(
-      trainDatasets, opt.zeroVector, opt.padding)
+  trainHdfData.y = scaleRegressionTargets(
+      trainHdfData, opt.zeroVector, opt.padding)
   if opt.test then
-    testDatasets.y = convert_to_regression_targets(
-        testDatasets, opt.zeroVector, opt.padding)
+    testHdfData.y = scaleRegressionTargets(
+        testHdfData, opt.zeroVector, opt.padding)
   end
 end
 
-trsize = trainDatasets.y:size(1) - opt.nValidation
+-- TODO: eliminate trsize and tesize.  They're used as global variables
+-- in other files.
+trsize = trainHdfData.y:size(1) - opt.nValidation
 if opt.test then
-  tesize = testDatasets.y:size(1)
+  tesize = testHdfData.y:size(1)
 end
 
 trainData = {
-  labels = trainDatasets.y,
-  data = trainDatasets.X,
+  labels = trainHdfData.y,
+  data = trainHdfData.X,
   size = function() return trsize end
 }
 
@@ -116,8 +113,8 @@ end
 
 if opt.test then
   testData = {
-    labels = testDatasets.y,
-    data = testDatasets.X,
+    labels = testHdfData.y,
+    data = testHdfData.X,
     size = function() return tesize end
   } 
 end
