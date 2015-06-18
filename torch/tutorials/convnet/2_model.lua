@@ -11,7 +11,6 @@ if not opt then
   cmd:text('SVHN Model Definition')
   cmd:text()
   cmd:text('Options:')
-  cmd:option('-visualize', true, 'visualize input data and weights during training')
   cmd:option('-type', 'double', 'type: double | float | cuda')
   cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
   cmd:option('-kernelWidth', 3, 'width of kernels: 2 or greater')

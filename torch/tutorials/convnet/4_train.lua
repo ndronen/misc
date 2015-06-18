@@ -14,7 +14,6 @@ if not opt then
    cmd:text()
    cmd:text('Options:')
    cmd:option('-save', 'results', 'subdirectory to save/log experiments in')
-   cmd:option('-visualize', false, 'visualize input data and weights during training')
    cmd:option('-plot', false, 'live plot')
    cmd:option('-optimization', 'SGD', 'optimization method: SGD | ASGD | ADAGRAD | ADADELTA')
    cmd:option('-learningRate', 1e-3, 'learning rate at t=0')

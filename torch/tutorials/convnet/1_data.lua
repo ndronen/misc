@@ -10,7 +10,6 @@ if not opt then
    cmd:text()
    cmd:text('Options:')
    cmd:option('-size', 'all', 'how many samples do we load: all | 20k | 1k')
-   cmd:option('-visualize', true, 'visualize input data and weights during training')
    cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
    cmd:option('-scaleMseTarget', 0, 'whether to scale the target variable when loss is mse')
    cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
