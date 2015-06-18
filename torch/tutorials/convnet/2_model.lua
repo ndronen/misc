@@ -30,6 +30,8 @@ if not opt then
   opt = cmd:parse(arg or {})
 end
 
+opt.nWords = tonumber(opt.nWords)
+
 if string.match(opt.nFullyConnectedLayers, ",") then
   local layerSizeStrings = string.split(opt.nFullyConnectedLayers, ",")
   opt.nFullyConnectedLayers = {}
@@ -95,8 +97,6 @@ local penultimateOutput = k * opt.nKernels
 local ninput = penultimateOutput
 
 if opt.spatial then
-  print('trainData.data:size(2)')
-  print(trainData.data:size(2))
   model:add(nn.View(-1, trainData.data:size(2), opt.wordDims))
 
   -- A spatial convolution can take either grayscale (i.e. single-channel)
