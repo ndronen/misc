@@ -6,39 +6,12 @@ require 'fbcunn'
 require('fb.luaunit')
 local torch = require('fbtorch')
 
-if not opt then
-   print '==> processing options'
-   cmd = torch.CmdLine()
-   cmd:text()
-   cmd:text('Grammaticality model training')
-   cmd:text()
-   cmd:text('Options:')
-   cmd:option('-save', 'results', 'subdirectory to save/log experiments in')
-   cmd:option('-optimization', 'SGD', 'optimization method: SGD | ASGD | ADAGRAD | ADADELTA')
-   cmd:option('-learningRate', 1e-3, 'learning rate at t=0')
-   cmd:option('-batchSize', 1, 'mini-batch size (1 = pure stochastic)')
-   cmd:option('-weightDecay', 0, 'weight decay (SGD only)')
-   cmd:option('-momentum', 0, 'momentum (SGD only)')
-   cmd:option('-maxNorm', 10, 'maximum 2-norm of neuron weights in fully-connected layers') 
-   cmd:option('-maxWordNorm', 20, 'maximum 2-norm of word representations in lookup table')
-   cmd:option('-t0', 1, 'start averaging at t0 (ASGD only), in nb of epochs')
-   cmd:option('-renormFreq', 0, 'number of updates after which to renorm weights')
-   cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]; 0 means there is no zero vector')
-   cmd:option('-zeroZeroVector', false, 'always undo any weight updates to the unknown word zero vector')
-   cmd:text()
-   opt = cmd:parse(arg or {})
-end
-
+--[[
 if opt.type == 'cuda' then
   model:cuda()
   criterion:cuda()
 end
-
--- Retrieve parameters and gradients:
--- this extracts and flattens all the trainable parameters of the model
--- into a 1-dim vector
-
--- parameters, gradParameters = model:getParameters()
+--]]
 
 function train(model, trainData, args)
   local optimState = args.optimState
@@ -227,5 +200,4 @@ function train(model, trainData, args)
     
   -- next epoch
   confusion:zero()
-  epoch = epoch + 1
 end
