@@ -10,6 +10,8 @@ if not opt then
   cmd:text()
   cmd:text('Grammaticality model definition')
   cmd:text()
+  cmd:text('Arguments:')
+  cmd:argument('nWords', 'number of words in the lookup table')
   cmd:text('Options:')
   cmd:option('-type', 'double', 'type: double | float | cuda')
   cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
@@ -49,8 +51,6 @@ elseif opt.activation == 'tanh' then
   activation = nn.Tanh
 end
 
-nWords = 107701
-
 inputFrameSize = opt.wordDims; -- dimensionality of one sequence element 
 kw = opt.kernelWidth;          -- kernel spans three input elements
 dw = 1;          -- we step once and go on to the next sequence element
@@ -69,9 +69,9 @@ end
 local lookupTable = nil
 
 if opt.type == 'cuda' then
-  lookupTable = nn.LookupTableGPU(nWords, opt.wordDims)
+  lookupTable = nn.LookupTableGPU(opt.nWords, opt.wordDims)
 else
-  lookupTable = nn.LookupTable(nWords, opt.wordDims)
+  lookupTable = nn.LookupTable(opt.nWords, opt.wordDims)
 end
 
 if opt.word2Vec then

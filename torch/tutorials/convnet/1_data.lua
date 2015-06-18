@@ -2,6 +2,8 @@ require 'torch'   -- torch
 require 'image'   -- for color transforms
 require 'hdf5'
 
+dofile('utils.lua')
+
 --[[
 Input labels are 0 for negative example, 1 for positive example.
 Transform these to (max length-num words) for negative examples and (max
@@ -45,16 +47,16 @@ local scaleRegressionTargets = function(dataset, zeroVectorIndex, padding)
 end
 
 if not opt then
-   print '==> processing options'
    cmd = torch.CmdLine()
    cmd:text()
    cmd:text('Grammaticality model data set loading')
    cmd:text()
+   cmd:text('Arguments:')
    cmd:argument('-trainFile', 'HDF5 file containing training data')
    cmd:text('Options:')
    cmd:option('-test', false, "whether to predict on test data")
    cmd:option('-testFile', "nil", 'HDF5 file containing test data')
-   cmd:option('-nTrain', 1, 'size of the training set (taken from first nTrain elements of training set)')
+   cmd:option('-nTrain', 0, 'size of the training set (taken from first nTrain elements of training set)')
    cmd:option('-nValidation', 0, 'size of the validation set to hold out from training (taken from last nValidation elements of training set)')
    cmd:option('-type', 'double', 'type: double | float | cuda')
    cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
@@ -65,11 +67,20 @@ if not opt then
    opt = cmd:parse(arg or {})
 end
 
--- Load data
+-- Load train/test data.
+if not file_exists(opt.trainFile) then
+  error('Train data file does not exist ' .. opt.trainFile)
+end
+
 local trainHdfFile = hdf5.open(opt.trainFile, 'r')
 local trainHdfData = trainHdfFile:read():all()
 
+local testHdfFile = nil
+local testHdfData = nil
 if opt.test then
+  if not file_exists(opt.testFile) then
+    error('Test data file does not exist ' .. opt.testFile)
+  end
   testHdfFile = hdf5.open(opt.testFile, 'r')
   testHdfData = testHdfFile:read():all()
 end
@@ -84,30 +95,34 @@ if (opt.loss == 'mse') and (opt.scaleMseTarget) then
   end
 end
 
--- TODO: eliminate trsize and tesize.  They're used as global variables
--- in other files.
-trsize = trainHdfData.y:size(1) - opt.nValidation
-if opt.test then
-  tesize = testHdfData.y:size(1)
+if opt.nTrain < 0 then error('nTrain must be > 0') end
+
+-- If the user didn't specify a training set size, set it to be the
+-- training set size to be what's left after removing the validation set.
+if opt.nTrain == 0 then
+  opt.nTrain = trainHdfData.y:size(1) - opt.nValidation
 end
 
+-- Verify that the validation and training sets don't overlap.
+if opt.nTrain + opt.nValidation > trainHdfData.y:size(1) then
+  local expr = '(' .. opt.nTrain ' + ' .. opt.nValidation .. ' > ' .. #trainHdfData.y .. ')'
+  error('nTrain + nValidation > number of training examples ' .. expr)
+end
+
+print('nTrain ' .. opt.nTrain)
+
 trainData = {
-  labels = trainHdfData.y,
-  data = trainHdfData.X,
-  size = function() return trsize end
+  labels=trainHdfData.y:narrow(1, 1, opt.nTrain),
+  data=trainHdfData.X:narrow(1, 1, opt.nTrain),
+  size=function() return opt.nTrain end
 }
 
 if opt.nValidation > 0 then
-  -- Move some of the training examples to the validation set.
+  start = trainHdfData.y:size(1) - opt.nTraim
   validData = {
-     labels = trainData.labels:narrow(1, trsize, opt.nValidation),
-     data = trainData.data:narrow(1, trsize, opt.nValidation),
-     size = function() return opt.nValidation end
-  }
-  trainData = {
-    labels = trainData.labels:narrow(1, 1, trsize),
-    data = trainData.data:narrow(1, 1, trsize),
-    size = function() return trsize end
+     labels=trainHdfData.y:narrow(1, start, opt.nValidation),
+     data=trainHdfData.X:narrow(1, start, opt.nValidation),
+     size=function() return opt.nValidation end
   }
 end
 
@@ -115,7 +130,7 @@ if opt.test then
   testData = {
     labels = testHdfData.y,
     data = testHdfData.X,
-    size = function() return tesize end
+    size = function() return testHdfData.y:size(1) end
   } 
 end
 
@@ -133,4 +148,8 @@ if opt.type == 'cuda' then
     testData.labels = testData.labels:clone():cuda()
   end
 end
+
+print('trainData')
+print(trainData.labels:size())
+print(trainData.data:size())
 

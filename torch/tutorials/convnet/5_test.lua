@@ -51,7 +51,7 @@ function test(data, opts)
   -- print confusion matrix
   print(confusion)
 
-  -- update log/plot
+  -- update log
   if opts.logger then
     opts.logger:add{['% mean class accuracy (' .. opts.mode .. ' set)'] = confusion.totalValid * 100}
   end
