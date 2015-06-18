@@ -109,8 +109,6 @@ if opt.nTrain + opt.nValidation > trainHdfData.y:size(1) then
   error('nTrain + nValidation > number of training examples ' .. expr)
 end
 
-print('nTrain ' .. opt.nTrain)
-
 trainData = {
   labels=trainHdfData.y:narrow(1, 1, opt.nTrain),
   data=trainHdfData.X:narrow(1, 1, opt.nTrain),
