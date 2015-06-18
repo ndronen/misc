@@ -26,3 +26,14 @@ buildOptimizer = function(opt)
 
   return optimState, optimMethod
 end
+
+buildConfusionMatrix = function(labels)
+  local classes = {}
+  local min_class = 1
+  local max_class = torch.max(labels)
+  for i=1,max_class do
+    table.insert(classes, tostring(i))
+  end
+
+  return optim.ConfusionMatrix(max_class, classes)
+end

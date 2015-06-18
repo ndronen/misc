@@ -19,8 +19,6 @@ if not opt then
    model = nn.Sequential()
 end
 
-print '==> define loss'
-
 if opt.loss == 'margin' then
   nclasses = 2
   -- This loss takes a vector of classes, and the index of

@@ -29,24 +29,12 @@ if not opt then
    opt = cmd:parse(arg or {})
 end
 
-print '==> setting up classes'
-
-local classes = {}
-min_class = 1
-max_class = torch.max(trainData.labels)
-print('==> setting up classes ' .. min_class .. ' ' .. max_class)
-for i=1,max_class do 
-  table.insert(classes, tostring(i))
-end
 
 if opt.type == 'cuda' then
   model:cuda()
   criterion:cuda()
 end
 
-print '==> creating confusion matrix'
--- This matrix records the current confusion across classes
-confusion = optim.ConfusionMatrix(max_class)
 
 -- Retrieve parameters and gradients:
 -- this extracts and flattens all the trainable parameters of the model
@@ -56,7 +44,7 @@ if model then
    parameters, gradParameters = model:getParameters()
 end
 
-function train(optimState, optimMethod)
+function train(optimState, optimMethod, confusion)
   -- epoch tracker
   epoch = epoch or 1
 

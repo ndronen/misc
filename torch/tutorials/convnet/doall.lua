@@ -89,9 +89,11 @@ normsLogger:setNames({'epoch', 'layer#', 'module', 'min', 'max', 'mean'})
 
 optimState, optimMethod = buildOptimizer(opt)
 
+confusion = buildConfusionMatrix(trainData.labels)
+
 while true do
   -- TODO: change train() to return error.
-  train(optimState, optimMethod)
+  train(optimState, optimMethod, confusion)
   -- TODO: change test() to return error; save the model here if validation
   -- performance is best one yet.
   if validData ~= nil then

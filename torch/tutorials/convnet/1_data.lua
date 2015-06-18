@@ -118,7 +118,7 @@ trainData = {
 }
 
 if opt.nValidation > 0 then
-  start = trainHdfData.y:size(1) - opt.nTraim
+  start = trainHdfData.y:size(1) - opt.nTrain
   validData = {
      labels=trainHdfData.y:narrow(1, start, opt.nValidation),
      data=trainHdfData.X:narrow(1, start, opt.nValidation),
@@ -148,8 +148,3 @@ if opt.type == 'cuda' then
     testData.labels = testData.labels:clone():cuda()
   end
 end
-
-print('trainData')
-print(trainData.labels:size())
-print(trainData.data:size())
-
