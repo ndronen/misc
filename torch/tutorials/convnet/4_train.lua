@@ -10,7 +10,7 @@ if not opt then
    print '==> processing options'
    cmd = torch.CmdLine()
    cmd:text()
-   cmd:text('SVHN Training/Optimization')
+   cmd:text('Grammaticality model training')
    cmd:text()
    cmd:text('Options:')
    cmd:option('-save', 'results', 'subdirectory to save/log experiments in')
