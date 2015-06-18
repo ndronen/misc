@@ -29,24 +29,24 @@ if not opt then
    opt = cmd:parse(arg or {})
 end
 
-
 if opt.type == 'cuda' then
   model:cuda()
   criterion:cuda()
 end
 
-
 -- Retrieve parameters and gradients:
 -- this extracts and flattens all the trainable parameters of the model
 -- into a 1-dim vector
 
-if model then
-   parameters, gradParameters = model:getParameters()
-end
+-- parameters, gradParameters = model:getParameters()
 
-function train(optimState, optimMethod, confusion)
-  -- epoch tracker
-  epoch = epoch or 1
+function train(model, trainData, args)
+  local optimState = args.optimState
+  local optimMethod = args.optimMethod
+  local parameters = args.parameters
+  local gradParameters = args.gradParameters
+  local confusion = args.confusion
+  local epoch = args.epoch
 
   -- local vars
   local time = sys.clock()
@@ -55,7 +55,7 @@ function train(optimState, optimMethod, confusion)
   model:training()
 
   -- shuffle at each epoch
-  shuffle = torch.randperm(trainData:size())
+  local shuffle = torch.randperm(trainData:size())
 
   -- do one epoch
   print('==> doing epoch on training data:')

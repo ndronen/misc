@@ -87,19 +87,30 @@ testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
 normsLogger = optim.Logger(paths.concat(opt.save, 'norms.log'))
 normsLogger:setNames({'epoch', 'layer#', 'module', 'min', 'max', 'mean'})
 
-optimState, optimMethod = buildOptimizer(opt)
-
-confusion = buildConfusionMatrix(trainData.labels)
+local optimState, optimMethod = buildOptimizer(opt)
+local confusion = buildConfusionMatrix(trainData.labels)
+local parameters, gradParameters = model:getParameters()
+local epoch = 1
 
 while true do
   -- TODO: change train() to return error.
-  train(optimState, optimMethod, confusion)
+  train(model, trainData, {
+    optimState=optimState,
+    optimMethod=optimMethod,
+    parameters=parameters,
+    gradParameters=gradParameters,
+    confusion=confusion,
+    epoch=epoch
+  })
+
   -- TODO: change test() to return error; save the model here if validation
   -- performance is best one yet.
   if validData ~= nil then
-    test(validData, { mode='validation', logger=validationLogger })
+    test(model, validData, { mode='validation', logger=validationLogger, confusion=confusion })
   end
   if testData ~= nil then
-    test(testData, { mode='test', logger=testLogger })
+    test(model, testData, { mode='test', logger=testLogger, confusion=confusion })
   end
+
+  epoch = epoch + 1
 end

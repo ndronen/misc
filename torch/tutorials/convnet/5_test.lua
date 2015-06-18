@@ -6,14 +6,16 @@ require 'fbcunn'
 require('fb.luaunit')
 local torch = require('fbtorch')
 
-function test(data, opts)
+function test(model, data, opts)
   local time = sys.clock()
 
   -- averaged param use?
+  --[[
   if average then
     cachedparams = parameters:clone()
     parameters:copy(average)
   end
+  --]]
 
   -- set model to evaluate mode (for modules that differ in training and testing, like Dropout)
   model:evaluate()
@@ -40,7 +42,9 @@ function test(data, opts)
       end
       pred = torch.round(pred)[1]
     end
-    confusion:add(pred, target)
+    if opts.confusion then
+      opts.confusion:add(pred, target)
+    end
   end
 
   -- timing
@@ -49,19 +53,22 @@ function test(data, opts)
   print("\n==> time for 1 (" .. opts.mode .. ") sample = " .. (time*1000) .. 'ms')
 
   -- print confusion matrix
-  print(confusion)
+  if opts.confusion then
+    print(opts.confusion)
+  end
 
   -- update log
-  if opts.logger then
-    opts.logger:add{['% mean class accuracy (' .. opts.mode .. ' set)'] = confusion.totalValid * 100}
+  if opts.logger and opts.confusion then
+    opts.logger:add{['% mean class accuracy (' .. opts.mode .. ' set)'] = opts.confusion.totalValid * 100}
   end
 
   -- averaged param use?
   if average then
+    error()
     -- restore parameters
     parameters:copy(cachedparams)
   end
   
-  -- next iteration:
-  confusion:zero()
+  -- next iteration
+  if opts.confusion then opts.confusion:zero() end
 end
