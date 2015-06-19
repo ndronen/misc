@@ -1,6 +1,6 @@
-#!/usr/bin/env th -gg
+#!/usr/bin/env th
 
-cmd = torch.CmdLine()
+local cmd = torch.CmdLine()
 cmd:text()
 cmd:text('Grammaticality model')
 cmd:text()
@@ -42,7 +42,16 @@ cmd:option('-activation', 'relu', 'activation function: relu | tanh')
 cmd:option('-renormFreq', 0, 'number of updates after which to renorm weights')
 cmd:option('-spatial', false, 'train a spatial convolutional network')
 cmd:text()
-opt = cmd:parse(arg or {})
+
+local opt = cmd:parse(arg or {})
+
+require 'convnet.utils'
+require 'convnet.data'
+require 'convnet.model'
+require 'convnet.loss'
+require 'convnet.optim'
+require 'convnet.train'
+require 'convnet.test'
 
 if opt.type == 'float' then
   require 'nn'
@@ -63,14 +72,7 @@ if opt.zeroZeroVector then
   end
 end
 
-require 'convnet.utils'
-require 'convnet.data'
-require 'convnet.model'
-require 'convnet.loss'
-require 'convnet.optim'
-require 'convnet.train'
-require 'convnet.test'
-
+local trainData, validData, testData = loadData(opt)
 local model = buildModel(opt)
 local criterion = buildCriterion(model, opt)
 
@@ -81,10 +83,10 @@ end
 
 print(model)
 
-trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
-validationLogger = optim.Logger(paths.concat(opt.save, 'validation.log'))
-testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
-normsLogger = optim.Logger(paths.concat(opt.save, 'norms.log'))
+local trainLogger = optim.Logger(paths.concat(opt.save, 'train.log'))
+local validationLogger = optim.Logger(paths.concat(opt.save, 'validation.log'))
+local testLogger = optim.Logger(paths.concat(opt.save, 'test.log'))
+local normsLogger = optim.Logger(paths.concat(opt.save, 'norms.log'))
 normsLogger:setNames({'epoch', 'layer#', 'module', 'min', 'max', 'mean'})
 
 local optimState, optimMethod = buildOptimizer(opt)
@@ -93,23 +95,35 @@ local parameters, gradParameters = model:getParameters()
 local epoch = 1
 
 while true do
-  -- TODO: change train() to return error.
+  -- TODO: change train() to return predictions.
   train(model, trainData, {
     optimState=optimState,
     optimMethod=optimMethod,
     parameters=parameters,
     gradParameters=gradParameters,
     confusion=confusion,
-    epoch=epoch
+    epoch=epoch,
+    trainLogger=trainLogger,
+    normsLogger=normsLogger,
+    batchSize=opt.batchSize,
+    dataType=opt.type,
+    loss=opt.loss,
+    spatial=opt.spatial,
+    save=opt.save,
+    renormFreq=opt.renormFreq,
+    zeroVector=opt.zeroVector,
+    zeroZeroVector=opt.zeroZeroVector,
+    maxWordNorm=opt.maxWordNorm
   })
 
-  -- TODO: change test() to return error; save the model here if validation
-  -- performance is best one yet.
+  -- TODO: change test() to return predictions so we don't need to pass in the
+  -- logger or confusion matrix objects.
+  -- TODO: save the model here if validation performance is best one yet.
   if validData ~= nil then
-    test(model, validData, { mode='validation', logger=validationLogger, confusion=confusion })
+    test(model, validData, { mode='validation', logger=validationLogger, confusion=confusion, loss=opt.loss, type=opt.type })
   end
   if testData ~= nil then
-    test(model, testData, { mode='test', logger=testLogger, confusion=confusion })
+    test(model, testData, { mode='test', logger=testLogger, confusion=confusion, loss=opt.loss, type=opt.type })
   end
 
   epoch = epoch + 1

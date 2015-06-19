@@ -12,6 +12,17 @@ function train(model, trainData, args)
   local gradParameters = args.gradParameters
   local confusion = args.confusion
   local epoch = args.epoch
+  local trainLogger = args.trainLogger
+  local normsLogger = args.normsLogger
+  local batchSize = args.batchSize
+  local dataType = args.type
+  local loss = args.loss
+  local spatial = args.spatial
+  local save = args.save
+  local renormFreq = args.renormFreq
+  local zeroVector = args.zeroVector
+  local zeroZeroVector = args.zeroZeroVector
+  local maxWordNorm = args.maxWordNorm
 
   -- local vars
   local time = sys.clock()
@@ -24,10 +35,10 @@ function train(model, trainData, args)
 
   -- do one epoch
   print('==> doing epoch on training data:')
-  print("==> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
+  print("==> online epoch # " .. epoch .. ' [batchSize = ' .. batchSize .. ']')
 
   local iter = 0
-  for t = 1,trainData:size(),opt.batchSize do
+  for t = 1,trainData:size(),batchSize do
     iter = iter + 1
 
     -- disp progress
@@ -36,12 +47,12 @@ function train(model, trainData, args)
     -- create mini batch
     local inputs = {}
     local targets = {}
-    for i = t,math.min(t+opt.batchSize-1,trainData:size()) do
+    for i = t,math.min(t+batchSize-1,trainData:size()) do
       -- load new sample
       local input = trainData.data[shuffle[i]]
       local target = trainData.labels[shuffle[i]]
-      if opt.type == 'double' then input = input:double()
-      elseif opt.type == 'cuda' then input = input:cuda() end
+      if dataType == 'double' then input = input:double()
+      elseif dataType == 'cuda' then input = input:cuda() end
       table.insert(inputs, input)
       table.insert(targets, target)
     end
@@ -67,16 +78,16 @@ function train(model, trainData, args)
         local output = model:forward(input)
         local targs = targets[i]
 
-        if opt.loss == 'mse' then
-          if opt.type == 'cuda' then
+        if loss == 'mse' then
+          if dataType == 'cuda' then
             targs = torch.CudaTensor(1)
           else
             targs = torch.Tensor(1)
           end
           targs[1] = targets[i]
         else
-          if opt.spatial then
-            if opt.type == 'cuda' then
+          if spatial then
+            if dataType == 'cuda' then
               targs = torch.CudaTensor(1)
             else
               targs = torch.Tensor(1)
@@ -94,7 +105,7 @@ function train(model, trainData, args)
         local df_do = criterion:backward(output, targs)
         model:backward(input, df_do)
 
-        if opt.loss == 'mse' then
+        if loss == 'mse' then
           if output[1] > max_class then
             output[1] = max_class
           elseif output[1] < 1 then
@@ -122,10 +133,10 @@ function train(model, trainData, args)
     optimMethod(feval, parameters, optimState)
 
     -- If there's a zero vector, ensure that it's always 0.
-    if opt.zeroZeroVector then
+    if zeroZeroVector then
       for i,module in ipairs(model:listModules()) do
         if torch.isTypeOf(module, 'nn.LookupTable') then
-          module.weight[opt.zeroVector]:zero()
+          module.weight[zeroVector]:zero()
         end
       end
     end
@@ -133,7 +144,7 @@ function train(model, trainData, args)
     p = 2
     renormDim = 1
 
-    if (opt.renormFreq > 0) and (iter % opt.renormFreq == 0) then
+    if (renormFreq > 0) and (iter % renormFreq == 0) then
       -- Rescale weights of fully-connected and convolutional layers.
       renormer:renorm()
   
@@ -145,7 +156,7 @@ function train(model, trainData, args)
           -- to track down.  The uncommented-out line is the workaround.
           -- module.weight:renorm(p, renormDim, opt.maxWordNorm)
           weight = module.weight:clone():float():renorm(p, renormDim, opt.maxWordNorm)
-          if opt.type == 'cuda' then
+          if dataType == 'cuda' then
             weight = weight:cuda()
           end
           module.weight = weight
@@ -168,7 +179,7 @@ function train(model, trainData, args)
   -- TODO: log summary statistic of model weights.
 
   -- save/log current net
-  local filename = paths.concat(opt.save, 'model.net')
+  local filename = paths.concat(save, 'model.net')
   os.execute('mkdir -p ' .. sys.dirname(filename))
   print('==> saving model to '..filename)
   torch.save(filename, model)

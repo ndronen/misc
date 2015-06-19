@@ -42,82 +42,86 @@ local scaleRegressionTargets = function(dataset, zeroVectorIndex, padding)
   return regTargets
 end
 
--- Load train/test data.
-if not file_exists(opt.trainFile) then
-  error('Train data file does not exist ' .. opt.trainFile)
-end
-
-local trainHdfFile = hdf5.open(opt.trainFile, 'r')
-local trainHdfData = trainHdfFile:read():all()
-
-local testHdfFile = nil
-local testHdfData = nil
-if opt.test then
-  if not file_exists(opt.testFile) then
-    error('Test data file does not exist ' .. opt.testFile)
+loadData = function(opt) 
+  -- Load train/test data.
+  if not file_exists(opt.trainFile) then
+    error('Train data file does not exist ' .. opt.trainFile)
   end
-  testHdfFile = hdf5.open(opt.testFile, 'r')
-  testHdfData = testHdfFile:read():all()
-end
-
--- Optionally scale the target variable if the loss is mean squared error.
-if (opt.loss == 'mse') and (opt.scaleMseTarget) then
-  trainHdfData.y = scaleRegressionTargets(
-      trainHdfData, opt.zeroVector, opt.padding)
+  
+  local trainHdfFile = hdf5.open(opt.trainFile, 'r')
+  local trainHdfData = trainHdfFile:read():all()
+  
+  local testHdfFile = nil
+  local testHdfData = nil
   if opt.test then
-    testHdfData.y = scaleRegressionTargets(
-        testHdfData, opt.zeroVector, opt.padding)
+    if not file_exists(opt.testFile) then
+      error('Test data file does not exist ' .. opt.testFile)
+    end
+    testHdfFile = hdf5.open(opt.testFile, 'r')
+    testHdfData = testHdfFile:read():all()
   end
-end
-
-if opt.nTrain < 0 then error('nTrain must be > 0') end
-
--- If the user didn't specify a training set size, set it to be the
--- training set size to be what's left after removing the validation set.
-if opt.nTrain == 0 then
-  opt.nTrain = trainHdfData.y:size(1) - opt.nValidation
-end
-
--- Verify that the validation and training sets don't overlap.
-if opt.nTrain + opt.nValidation > trainHdfData.y:size(1) then
-  local expr = '(' .. opt.nTrain ' + ' .. opt.nValidation .. ' > ' .. #trainHdfData.y .. ')'
-  error('nTrain + nValidation > number of training examples ' .. expr)
-end
-
-trainData = {
-  labels=trainHdfData.y:narrow(1, 1, opt.nTrain),
-  data=trainHdfData.X:narrow(1, 1, opt.nTrain),
-  size=function() return opt.nTrain end
-}
-
-if opt.nValidation > 0 then
-  start = trainHdfData.y:size(1) - opt.nTrain
-  validData = {
-     labels=trainHdfData.y:narrow(1, start, opt.nValidation),
-     data=trainHdfData.X:narrow(1, start, opt.nValidation),
-     size=function() return opt.nValidation end
+  
+  -- Optionally scale the target variable if the loss is mean squared error.
+  if (opt.loss == 'mse') and (opt.scaleMseTarget) then
+    trainHdfData.y = scaleRegressionTargets(
+        trainHdfData, opt.zeroVector, opt.padding)
+    if opt.test then
+      testHdfData.y = scaleRegressionTargets(
+          testHdfData, opt.zeroVector, opt.padding)
+    end
+  end
+  
+  if opt.nTrain < 0 then error('nTrain must be > 0') end
+  
+  -- If the user didn't specify a training set size, set it to be the
+  -- training set size to be what's left after removing the validation set.
+  if opt.nTrain == 0 then
+    opt.nTrain = trainHdfData.y:size(1) - opt.nValidation
+  end
+  
+  -- Verify that the validation and training sets don't overlap.
+  if opt.nTrain + opt.nValidation > trainHdfData.y:size(1) then
+    local expr = '(' .. opt.nTrain ' + ' .. opt.nValidation .. ' > ' .. #trainHdfData.y .. ')'
+    error('nTrain + nValidation > number of training examples ' .. expr)
+  end
+  
+  trainData = {
+    labels=trainHdfData.y:narrow(1, 1, opt.nTrain),
+    data=trainHdfData.X:narrow(1, 1, opt.nTrain),
+    size=function() return opt.nTrain end
   }
-end
-
-if opt.test then
-  testData = {
-    labels = testHdfData.y,
-    data = testHdfData.X,
-    size = function() return testHdfData.y:size(1) end
-  } 
-end
-
-if opt.type == 'cuda' then
-  trainData.data = trainData.data:clone():cuda()
-  trainData.labels = trainData.labels:clone():cuda()
-
-  if validData ~= nil then
-    validData.data = validData.data:clone():cuda()
-    validData.labels = validData.labels:clone():cuda()
+  
+  if opt.nValidation > 0 then
+    start = trainHdfData.y:size(1) - opt.nTrain
+    validData = {
+       labels=trainHdfData.y:narrow(1, start, opt.nValidation),
+       data=trainHdfData.X:narrow(1, start, opt.nValidation),
+       size=function() return opt.nValidation end
+    }
+  end
+  
+  if opt.test then
+    testData = {
+      labels = testHdfData.y,
+      data = testHdfData.X,
+      size = function() return testHdfData.y:size(1) end
+    } 
+  end
+  
+  if opt.type == 'cuda' then
+    trainData.data = trainData.data:clone():cuda()
+    trainData.labels = trainData.labels:clone():cuda()
+  
+    if validData ~= nil then
+      validData.data = validData.data:clone():cuda()
+      validData.labels = validData.labels:clone():cuda()
+    end
+  
+    if testData ~= nil then
+      testData.data = testData.data:clone():cuda()
+      testData.labels = testData.labels:clone():cuda()
+    end
   end
 
-  if testData ~= nil then
-    testData.data = testData.data:clone():cuda()
-    testData.labels = testData.labels:clone():cuda()
-  end
+  return trainData, validData, testData
 end

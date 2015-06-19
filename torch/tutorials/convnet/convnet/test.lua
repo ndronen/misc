@@ -6,26 +6,30 @@ require 'xlua'   -- xlua provides useful tools, like progress bars
 -- local torch = require('fbtorch')
 
 function test(model, data, opts)
+  local mode = opts.mode
+  local dataType = opts.type
+  local loss = opts.loss
+
   local time = sys.clock()
 
   -- set model to evaluate mode (for modules that differ in training and testing, like Dropout)
   model:evaluate()
 
   -- test over test data
-  print('==> testing on ' .. opts.mode .. ' set:')
+  print('==> testing on ' .. mode .. ' set:')
   for t = 1,data:size() do
     -- disp progress
     xlua.progress(t, data:size())
 
     -- get new sample
     local input = data.data[t]
-    if opt.type == 'double' then input = input:double()
-    elseif opt.type == 'cuda' then input = input:cuda() end
+    if dataType == 'double' then input = input:double()
+    elseif dataType == 'cuda' then input = input:cuda() end
     local target = data.labels[t]
 
     -- test sample
     local pred = model:forward(input)
-    if opt.loss == 'mse' then
+    if loss == 'mse' then
       if pred[1] > max_class then
        pred[1] = max_class
       elseif pred[1] < min_class then
