@@ -64,12 +64,12 @@ if opt.zeroZeroVector then
 end
 
 require 'convnet.utils'
-require 'convnet.1_data'
-require 'convnet.2_model'
-require 'convnet.3_loss'
-require 'convnet.4_optim'
-require 'convnet.4_train'
-require 'convnet.5_test'
+require 'convnet.data'
+require 'convnet.model'
+require 'convnet.loss'
+require 'convnet.optim'
+require 'convnet.train'
+require 'convnet.test'
 
 local model = buildModel(opt)
 local criterion = buildCriterion(model, opt)
