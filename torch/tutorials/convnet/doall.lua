@@ -1,20 +1,10 @@
-#!/usr/bin/env th
-
-require 'cutorch'
-require 'fbcunn'
-
-require('fb.luaunit')
-local torch = require('fbtorch')
-
-dofile('utils.lua')
-
-torch.setnumthreads(6)
-torch.setdefaulttensortype('torch.FloatTensor')
+#!/usr/bin/env th -gg
 
 cmd = torch.CmdLine()
 cmd:text()
 cmd:text('Grammaticality model')
 cmd:text()
+
 cmd:text('Arguments:')
 cmd:argument('nWords', 'number of words in the lookup table', 'string')
 cmd:argument('trainFile', 'HDF5 file containing training data', 'string')
@@ -48,8 +38,6 @@ cmd:option('-maxWordNorm', 1, 'maximum 2-norm of word representations in lookup 
 cmd:option('-wordDims', 50, 'number of dimensions of word representations')
 cmd:option('-word2Vec', false, 'use pretrained word2vec weights in lookup table')
 cmd:option('-fixWords', false, 'disable updates of word representations')
-
-
 cmd:option('-activation', 'relu', 'activation function: relu | tanh')
 cmd:option('-renormFreq', 0, 'number of updates after which to renorm weights')
 cmd:option('-spatial', false, 'train a spatial convolutional network')
@@ -57,10 +45,13 @@ cmd:text()
 opt = cmd:parse(arg or {})
 
 if opt.type == 'float' then
-   torch.setdefaulttensortype('torch.FloatTensor')
+  require 'nn'
+  torch.setdefaulttensortype('torch.FloatTensor')
 elseif opt.type == 'cuda' then
-   require 'cunn'
-   torch.setdefaulttensortype('torch.FloatTensor')
+  -- require 'cunn'
+  require 'fbcunn'
+  torch = require('fbtorch')
+  torch.setdefaulttensortype('torch.FloatTensor')
 end
 
 torch.setnumthreads(opt.threads)
@@ -72,12 +63,21 @@ if opt.zeroZeroVector then
   end
 end
 
-dofile '1_data.lua'
-dofile '2_model.lua'
-dofile '3_loss.lua'
-dofile '4_optim.lua'
-dofile '4_train.lua'
-dofile '5_test.lua'
+require 'utils'
+require '1_data'
+require '2_model'
+require '3_loss'
+require '4_optim'
+require '4_train'
+require '5_test'
+
+local model = buildModel(opt)
+local criterion = buildCriterion(model, opt)
+
+if opt.type == 'cuda' then
+  model:cuda()
+  criterion:cuda()
+end
 
 print(model)
 
