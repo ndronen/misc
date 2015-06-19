@@ -1,8 +1,4 @@
-require 'torch'   -- torch
-require 'image'   -- for color transforms
 require 'hdf5'
-
-dofile('utils.lua')
 
 --[[
 Input labels are 0 for negative example, 1 for positive example.
@@ -44,27 +40,6 @@ local scaleRegressionTargets = function(dataset, zeroVectorIndex, padding)
   -- Rescale.
   regTargets = torch.round((regTargets:float()/opt.scaleMseTarget))+1
   return regTargets
-end
-
-if not opt then
-   cmd = torch.CmdLine()
-   cmd:text()
-   cmd:text('Grammaticality model data set loading')
-   cmd:text()
-   cmd:text('Arguments:')
-   cmd:argument('-trainFile', 'HDF5 file containing training data')
-   cmd:text('Options:')
-   cmd:option('-test', false, "whether to predict on test data")
-   cmd:option('-testFile', "nil", 'HDF5 file containing test data')
-   cmd:option('-nTrain', 0, 'size of the training set (taken from first nTrain elements of training set)')
-   cmd:option('-nValidation', 0, 'size of the validation set to hold out from training (taken from last nValidation elements of training set)')
-   cmd:option('-type', 'double', 'type: double | float | cuda')
-   cmd:option('-loss', 'nll', 'type of loss function to minimize: nll | mse | margin')
-   cmd:option('-scaleMseTarget', 0, 'whether to scale the target variable when loss is mse')
-   cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]')
-   cmd:option('-padding', 2, 'the number of leading and trailing zero-padding entries per sentence')
-   cmd:text()
-   opt = cmd:parse(arg or {})
 end
 
 -- Load train/test data.

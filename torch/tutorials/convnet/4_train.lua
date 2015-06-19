@@ -1,17 +1,9 @@
 require 'xlua'    -- xlua provides useful tools, like progress bars
-require 'optim'   -- an optimization package, for online and batch methods
 
-require 'cutorch'
-require 'fbcunn'
-require('fb.luaunit')
-local torch = require('fbtorch')
-
---[[
-if opt.type == 'cuda' then
-  model:cuda()
-  criterion:cuda()
-end
---]]
+-- require 'cutorch'
+-- require 'fbcunn'
+-- require('fb.luaunit')
+-- local torch = require('fbtorch')
 
 function train(model, trainData, args)
   local optimState = args.optimState
@@ -28,7 +20,7 @@ function train(model, trainData, args)
   model:training()
 
   -- shuffle at each epoch
-  local shuffle = torch.randperm(trainData:size())
+  local shuffle = torch.randperm(trainData.size())
 
   -- do one epoch
   print('==> doing epoch on training data:')
@@ -127,11 +119,7 @@ function train(model, trainData, args)
     end
 
     -- Optimize on current mini-batch.
-    if optimMethod == optim.asgd then
-      _,_,average = optimMethod(feval, parameters, optimState)
-    else
-      optimMethod(feval, parameters, optimState)
-    end
+    optimMethod(feval, parameters, optimState)
 
     -- If there's a zero vector, ensure that it's always 0.
     if opt.zeroZeroVector then

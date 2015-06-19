@@ -1,21 +1,12 @@
 require 'xlua'   -- xlua provides useful tools, like progress bars
-require 'optim'  -- an optimization package, for online and batch methods
 
-require 'cutorch'
-require 'fbcunn'
-require('fb.luaunit')
-local torch = require('fbtorch')
+-- require 'cutorch'
+-- require 'fbcunn'
+-- require('fb.luaunit')
+-- local torch = require('fbtorch')
 
 function test(model, data, opts)
   local time = sys.clock()
-
-  -- averaged param use?
-  --[[
-  if average then
-    cachedparams = parameters:clone()
-    parameters:copy(average)
-  end
-  --]]
 
   -- set model to evaluate mode (for modules that differ in training and testing, like Dropout)
   model:evaluate()
@@ -62,13 +53,6 @@ function test(model, data, opts)
     opts.logger:add{['% mean class accuracy (' .. opts.mode .. ' set)'] = opts.confusion.totalValid * 100}
   end
 
-  -- averaged param use?
-  if average then
-    error()
-    -- restore parameters
-    parameters:copy(cachedparams)
-  end
-  
   -- next iteration
   if opts.confusion then opts.confusion:zero() end
 end
