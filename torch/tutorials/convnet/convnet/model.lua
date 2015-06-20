@@ -48,8 +48,8 @@ buildModel = function(opt)
   local model = nn.Sequential()
   local renormer = kttorch.Renormer()
   
-  if opt.zeroVector ~= 0 then
-    model:add(kttorch.LookupTableInputZeroer(0.2, opt.zeroVector))
+  if opt.lookupTableDropout > 0 and opt.zeroVector ~= 0 then
+    model:add(kttorch.LookupTableInputZeroer(opt.lookupTableDropout, opt.zeroVector))
   end
   
   local lookupTable = nil
