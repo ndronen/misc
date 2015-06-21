@@ -1,3 +1,7 @@
+* Train convnet in cosine space using torch.renorm for word
+  representations and convnet/renorming.lua for components of
+  kernels.
+
 * Data sets:
     * BNC
     * Wikipedia (same size as BNC)
