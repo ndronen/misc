@@ -24,8 +24,6 @@ cmd:option('-learningRate', 1e-3, 'learning rate at t=0')
 cmd:option('-batchSize', 1, 'mini-batch size (1 = pure stochastic)')
 cmd:option('-weightDecay', 0, 'weight decay (SGD only)')
 cmd:option('-momentum', 0, 'momentum (SGD only)')
--- cmd:option('-t0', 1, 'start averaging at t0 (ASGD only), in nb of epochs')
--- cmd:option('-maxIter', 2, 'maximum nb of iterations for CG and LBFGS')
 cmd:option('-type', 'double', 'type: double | float | cuda')
 cmd:option('-zeroVector', 107701, 'index of zero vector in dictionary: [1, dict size]; 0 means there is no zero vector')
 cmd:option('-zeroZeroVector', false, 'always undo any weight updates to the unknown word zero vector')
@@ -42,8 +40,9 @@ cmd:option('-fixWords', false, 'disable updates of word representations')
 cmd:option('-activation', 'relu', 'activation function: relu | tanh')
 cmd:option('-renormFreq', 0, 'number of updates after which to renorm weights')
 cmd:option('-spatial', false, 'train a spatial convolutional network')
-cmd:option('-minTrainSentLength', 0, 'minimum length of a sentence for training: default=0 (disabled)')
-cmd:option('-maxTrainSentLength', 0, 'maximum length of a sentence for training: default=0 (disabled)')
+cmd:option('-minTrainSentLength', 0, 'minimum length of a sentence for training: (disabled=0)')
+cmd:option('-maxTrainSentLength', 0, 'maximum length of a sentence for training: (disabled=0)')
+cmd:option('-makeNegativeExamples', false, 'whether to make negative examples; when true, negative valdiation and test set examples are made ones and negative training set examples are made anew before each epoch')
 cmd:text()
 
 local opt = cmd:parse(arg or {})
@@ -97,7 +96,29 @@ local confusion = buildConfusionMatrix(trainData.labels)
 local parameters, gradParameters = model:getParameters()
 local epoch = 1
 
+if opt.makeNegativeExamples then
+  if validData ~= nil then
+    local data, labels = makeCollobertAndWestonNegativeExamples(
+        validData.data, validData.labels)
+    validData.data = data
+    validData.labels = labels
+  end
+  if testData ~= nil then
+    local data, labels = makeCollobertAndWestonNegativeExamples(
+        testData.data, testData.labels)
+    testData.data = data
+    testData.labels = labels
+  end
+end
+
 while true do
+  if opt.makeNegativeExamples then
+    local data, labels = makeCollobertAndWestonNegativeExamples(
+        trainData.data, trainData.labels)
+    trainData.data = data 
+    trainData.labels = labels
+  end
+
   -- TODO: change train() to return predictions.
   train(model, trainData, {
     optimState=optimState,

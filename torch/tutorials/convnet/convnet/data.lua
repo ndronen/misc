@@ -1,6 +1,74 @@
 require 'hdf5'
 
 --[[
+--]]
+makeCollobertAndWestonNegativeExamples = function(data, labels, opts)
+  data = data:clone()
+  labels = labels:clone()
+
+  local opts = opts or {}
+
+  local negativeLabel = opts.negativeLabel
+  if negativeLabel == nil then
+    negativeLabel = 1
+  end
+
+  local maxIndex = opts.maxIndex
+  if maxIndex == nil then
+    maxIndex = torch.max(data)
+  end
+
+  local padding = opts.padding
+  if padding == nil then
+    padding = 2
+  end
+
+  -- Find examples that have the negative class's label and replace
+  -- one word with a random word.  A word here is an index into the
+  -- vocabulary.
+  for i=1,data:size(1) do
+    if labels[i] == opts.negativeLabel then
+      newWord = torch.random(opts.maxIndex)
+      replacementIndex = torch.random(data:size(2) - 2*padding)
+      data[i][replacementIndex] = newWord
+    end
+  end
+  return data, labels
+end
+
+--[[
+--]]
+filterByLength = function(data, labels, length, direction, zeroVectorIndex, padding)
+  local numZero = countZeroesInSentence(data, zeroVectorIndex, padding)
+  local numWords = -numZero + data:size(2)
+  local mask = nil
+  if direction == 'min' then
+    mask = numWords:gt(length):byte()
+  else
+    mask = numWords:lt(length):byte()
+  end
+  local indices = torch.linspace(1, mask:size(1), mask:size(1)):long()
+  local selected = indices[mask:eq(1)]
+  local selectedLabels = labels:index(1, selected)
+  local selectedData = data:index(1, selected)
+  return selectedData, selectedLabels
+end
+
+--[[
+--]]
+countZeroesInSentence = function(data, zeroVectorIndex, padding)
+  -- Make a binary mask of the unknown or zero-padding words in each sentence.
+  zeroVectorMask = data:eq(zeroVectorIndex):int()
+
+  --[[
+  Count the unknown and zero-padding words in each sentence by summing
+  along the rows, then subtract the number of zero-padding words,
+  since they don't add to the length of the sentence.
+  --]]
+  return torch.sum(zeroVectorMask, 2) - 2*padding
+end
+
+--[[
 Input labels are 0 for negative example, 1 for positive example.
 Transform these to (max length-num words) for negative examples and (max
 length+num words) for positive examples.  This should cause the model
@@ -8,16 +76,8 @@ to try to place extremely short positive and negative examples near one
 another and to place extremely long positive and negative examples far
 from one another.
 --]]
-local scaleRegressionTargets = function(dataset, zeroVectorIndex, padding)
-  -- Make a binary mask of the unknown or zero-padding words in each sentence.
-  zeroVectorMask = dataset.X:eq(zeroVectorIndex):int()
-
-  --[[
-  Count the unknown and zero-padding words in each sentence by summing
-  along the rows, then subtract the number of zero-padding words,
-  since they don't add to the length of the sentence.
-  --]]
-  numZero = torch.sum(zeroVectorMask, 2) - 2*padding
+scaleRegressionTargets = function(dataset, zeroVectorIndex, padding)
+  numZero = countZeroesInSentence(dataset.X, zeroVectorIndex, padding)
   numZero = numZero:reshape(numZero:nElement())
   numZero[torch.lt(numZero, 1)] = 1
 
@@ -72,7 +132,7 @@ loadData = function(opt)
   end
   
   if opt.nTrain < 0 then error('nTrain must be > 0') end
-  
+
   -- If the user didn't specify a training set size, set it to be the
   -- training set size to be what's left after removing the validation set.
   if opt.nTrain == 0 then
@@ -106,6 +166,24 @@ loadData = function(opt)
       data = testHdfData.X,
       size = function() return testHdfData.y:size(1) end
     } 
+  end
+
+  if opt.minTrainSentLength > 0 then
+    local X, y = filterByLength(
+        trainData.data, trainData.labels,
+        opt.minTrainSentLength, 'min',
+        opt.zeroVector, opt.padding)
+    trainData.data = X
+    trainData.labels = y
+    trainData.size = function() return trainData.data:size(1) end
+  elseif opt.maxTrainSentLength > 0 then
+    local X, y = filterByLength(
+        trainData.data, trainData.labels,
+        opt.maxTrainSentLength, 'max',
+        opt.zeroVector, opt.padding)
+    trainData.data = X
+    trainData.labels = y
+    trainData.size = function() return trainData.data:size(1) end
   end
   
   if opt.type == 'cuda' then
