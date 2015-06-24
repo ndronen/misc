@@ -1,12 +1,15 @@
 * Train convnet in cosine space using torch.renorm for word
-  representations and convnet/renorming.lua for components of
-  kernels.
+  representations and convnet/renorming.lfor components of
+  kernels.  Use (the as-yet not complete):
+
+    results/test-wiki/okanohara/1m-cosine-space/run.sh 
 
 * Data sets:
     * BNC
     * Wikipedia (same size as BNC)
     * Wikipedia (much larger)
     * Sentences from ASAP short answer data set
+    * Sentences from ETS grammaticality data set
 
 * Models
     * Temporal convolutional network
@@ -27,6 +30,10 @@
               of the filter is copied to the words at positions i,
               i+1, ..., i+k-1.)
             * Do the same for the negative filters.
+    * Compare log probabilities that our model assigns to sentences to
+      to log probabilities assigned by a language model.  The hope is
+      that our model is weakly -- or at least not strongly -- correlated
+      with a language model.
 
 * Curriculum learning
     * Try training first using only long positive and negative examples.
@@ -128,3 +135,9 @@
   to trip up optimization process; performance goes from the initial
   random state to some improvement, then back down to random, where it
   seems to stay.
+
+* Add function for randomly replacing a word in a sentence.  This should
+  allow to start training on Wikipedia very soon.  The function should be
+  called once for the validation and test sets before training commences,
+  and at the beginning of each epoch for the training set.
+
