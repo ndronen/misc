@@ -46,7 +46,11 @@ buildModel = function(opt)
   
   -- a typical modern convolution network (conv+relu+pool)
   local model = nn.Sequential()
-  local renormer = kttorch.Renormer()
+  local renormers = kttorch.Renormers()
+
+  if opt.zeroVector > 0 then
+    model:add(kttorch.SentenceCompacter(opt.padding, opt.zeroVector))
+  end
   
   if opt.lookupTableDropout > 0 and opt.zeroVector ~= 0 then
     model:add(kttorch.LookupTableInputZeroer(opt.lookupTableDropout, opt.zeroVector))
@@ -154,19 +158,18 @@ buildModel = function(opt)
     --  model:add(nn.TemporalConvolutionFB(inputFrameSize, opt.nKernels, kw, dw))
     -- else
     local conv = nn.TemporalConvolution(inputFrameSize, opt.nKernels, kw, dw)
-    renormer:add(conv, opt.maxNorm)
+    -- renormers:add(conv, opt.maxNorm)
     model:add(conv)
   
     model:add(activation())
     -- end
   
-    if k == 1 then
-      -- Is it (width - kernel width) or (width - (kernel width - 1))?
-      -- model:add(nn.TemporalMaxPooling(trainData.data:size(2)-(opt.kernelWidth-1)))
-      model:add(nn.TemporalMaxPooling(trainData.data:size(2)-opt.kernelWidth))
-    else
-      model:add(nn.TemporalKMaxPooling(k))
-    end
+    -- Use TemporalKMaxPooling instead of TemporalMaxPooling.  The problem
+    -- with TemporalMaxPooling is that it requires a kernel size, which
+    -- is complicated when using kttorch.SentenceCompacter to shrink
+    -- sentences to their natural length (and not the heavily zero-padded,
+    -- fixed-width length that occurs when you put them into a matrix format.
+    model:add(nn.TemporalKMaxPooling(k))
     -- model:add(nn.BatchNormalization(0))
     model:add(nn.Dropout(0.5))
     model:add(nn.View(k * opt.nKernels))
@@ -180,7 +183,7 @@ buildModel = function(opt)
     end
     -- model:add(nn.BatchNormalization(0))
     local linear = nn.Linear(ninput, noutput)
-    renormer:add(linear, opt.maxNorm)
+    -- renormers:add(linear, opt.maxNorm)
     penultimateOutput = noutput
     model:add(linear)
     model:add(activation())
