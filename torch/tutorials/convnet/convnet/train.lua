@@ -1,10 +1,5 @@
 require 'xlua'    -- xlua provides useful tools, like progress bars
 
--- require 'cutorch'
--- require 'fbcunn'
--- require('fb.luaunit')
--- local torch = require('fbtorch')
-
 function train(model, trainData, args)
   local optimState = args.optimState
   local optimMethod = args.optimMethod
