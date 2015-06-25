@@ -79,11 +79,31 @@ buildModel = function(opt)
     lookupTable = kttorch.FixedLookupTable(lookupTable)
   end
   
-  if opt.type == 'cuda' then
-    lookupTable.weight = lookupTable.weight:clone():float():renorm(2, 1, opt.maxWordNorm)
-  else
-    lookupTable.weight:renorm(2, 1, opt.maxWordNorm)
+  if opt.maxWordNorm > 0 then
+    -- TODO: allocate the LookupTableRenormer here instead of explicitly
+    -- calling renorm() on the tensor.
+    --[[
+    if opt.type == 'cuda' then
+      -- I don't remember whether renorming in this complicated way
+      -- (copying, casting to float, and renorming) is necessary here,
+      -- but it is necessary in the main train loop, for reasons I've
+      -- yet to isolate.
+      -- 
+      lookupTable.weight = lookupTable.weight:clone():float():renorm(2, 1, opt.maxWordNorm)
+    else
+      lookupTable.weight:renorm(2, 1, opt.maxWordNorm)
+    end
+    --]]
+    if opt.forceWordsOnBall then
+      -- A bit of a hack.  Make all of the weights big so the L2 norms are greater
+      -- than the max.  This forces all words to have the same norm after renorming.
+      lookupTable:reset(10)
+    end
+    local wordRenormer = kttorch.LookupTableRenormer(lookupTable, opt.maxWordNorm)
+    wordRenormer:renorm()
+    renormers:add(wordRenormer)
   end
+
   model:add(lookupTable)
   
   local penultimateOutput = k * opt.nKernels
@@ -158,7 +178,18 @@ buildModel = function(opt)
     --  model:add(nn.TemporalConvolutionFB(inputFrameSize, opt.nKernels, kw, dw))
     -- else
     local conv = nn.TemporalConvolution(inputFrameSize, opt.nKernels, kw, dw)
-    -- renormers:add(conv, opt.maxNorm)
+    if opt.maxFilterNorm > 0 then
+      if opt.forceFiltersOnBall then
+        -- A bit of a hack.  Make all of the weights big so the L2 norms
+        -- are greater than the max.  This forces all words to have the
+        -- same norm after renorming.
+        conv:reset(10)
+      end
+      local convRenormer = kttorch.TemporalConvolutionRenormer(
+          conv, opt.maxFilterNorm)
+      convRenormer:renorm()
+      renormers:add(convRenormer)
+    end
     model:add(conv)
   
     model:add(activation())
@@ -170,6 +201,7 @@ buildModel = function(opt)
     -- sentences to their natural length (and not the heavily zero-padded,
     -- fixed-width length that occurs when you put them into a matrix format.
     model:add(nn.TemporalKMaxPooling(k))
+
     -- model:add(nn.BatchNormalization(0))
     model:add(nn.Dropout(0.5))
     model:add(nn.View(k * opt.nKernels))
@@ -202,5 +234,5 @@ buildModel = function(opt)
   -- model:add(kttorch.InputPrinter('Final Linear'))
   model:add(nn.Linear(penultimateOutput, noutputs))
   
-  return model, renormer
+  return model, renormers
 end

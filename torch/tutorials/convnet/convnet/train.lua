@@ -5,19 +5,27 @@ function train(model, trainData, args)
   local optimMethod = args.optimMethod
   local parameters = args.parameters
   local gradParameters = args.gradParameters
-  local confusion = args.confusion
   local epoch = args.epoch
+  -- TODO: the train and norms loggers should be called via post-epoch
+  -- handlers.
   local trainLogger = args.trainLogger
   local normsLogger = args.normsLogger
+  -- TODO: create a dataset iterator.
   local batchSize = args.batchSize
   local dataType = args.type
   local loss = args.loss
   local spatial = args.spatial
+  -- TODO: change train to return predictions, so the caller can determine
+  -- when to save the model, and the train logger can be responsible for
+  -- logging the confusion matrix without the train loop having to know.
   local save = args.save
+  local confusion = args.confusion
+  -- TODO: move the responsibility for determining when to renorm to
+  -- the renormers themselves.
   local renormFreq = args.renormFreq
   local zeroVector = args.zeroVector
   local zeroZeroVector = args.zeroZeroVector
-  local maxWordNorm = args.maxWordNorm
+  local renormers = args.renormers
 
   -- local vars
   local time = sys.clock()
@@ -136,27 +144,8 @@ function train(model, trainData, args)
       end
     end
 
-    p = 2
-    renormDim = 1
-
     if (renormFreq > 0) and (iter % renormFreq == 0) then
-      -- Rescale weights of fully-connected and convolutional layers.
-      renormer:renorm()
-  
-      -- Rescale word representations.  I can't use Renormer to do this yet.
-      for i,module in ipairs(model:listModules()) do
-        if torch.isTypeOf(module, 'nn.LookupTable') then
-          -- The following commented-out line of code is what I should be
-          -- able to run, but it causes an error that I haven't been able
-          -- to track down.  The uncommented-out line is the workaround.
-          -- module.weight:renorm(p, renormDim, opt.maxWordNorm)
-          weight = module.weight:clone():float():renorm(p, renormDim, opt.maxWordNorm)
-          if dataType == 'cuda' then
-            weight = weight:cuda()
-          end
-          module.weight = weight
-        end
-      end
+      renormers:renorm()
     end
   end
 

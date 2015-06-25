@@ -33,7 +33,10 @@ cmd:option('-kernelWidth', 2, 'width of kernels: 2 or greater')
 cmd:option('-nKernels', 500, 'number of kernels: 2 or greater')
 cmd:option('-nFullyConnectedLayers', '1', 'number of extra fully-connected layers after convolutional layers')
 cmd:option('-maxNorm', 1, 'maximum 2-norm of neuron weights in fully-connected layers')
-cmd:option('-maxWordNorm', 1, 'maximum 2-norm of word representations in lookup table')
+cmd:option('-maxWordNorm', 0, 'maximum 2-norm of word representations in lookup table')
+cmd:option('-forceWordsOnBall', false, 'keep 2-norm of word representations on same surface (requires -maxWordNorm > 0)')
+cmd:option('-maxFilterNorm', 0, 'maximum 2-norm of components of convolutional filters')
+cmd:option('-forceFiltersOnBall', false, 'keep 2-norm of components of convolutional filters on same surface (requires -maxFilterNorm > 0)')
 cmd:option('-wordDims', 50, 'number of dimensions of word representations')
 cmd:option('-word2Vec', false, 'use pretrained word2vec weights in lookup table')
 cmd:option('-fixWords', false, 'disable updates of word representations')
@@ -75,7 +78,7 @@ if opt.zeroZeroVector then
 end
 
 local trainData, validData, testData = loadData(opt)
-local model = buildModel(opt)
+local model, renormers = buildModel(opt)
 local criterion = buildCriterion(model, opt)
 
 if opt.type == 'cuda' then
@@ -137,7 +140,7 @@ while true do
     renormFreq=opt.renormFreq,
     zeroVector=opt.zeroVector,
     zeroZeroVector=opt.zeroZeroVector,
-    maxWordNorm=opt.maxWordNorm
+    renormers=renormers
   })
 
   -- TODO: change test() to return predictions so we don't need to pass in the
