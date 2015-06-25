@@ -18,11 +18,18 @@ cmd:text()
 
 local opt = cmd:parse(arg or {})
 
--- Load data and model.
 local testFile = hdf5.open(opt.input, 'r')
 local testData = testFile:read():all()
-local model = torch.load(opt.model)
 
+--[[
+Load model and turn on evaluation mode.  Evaluation mode is the
+counterpart of training mode.  Randomness often exists in a network in
+training mode, such a random dropout of layer outputs, that result in
+the same input yielding a different output.  Turning on evaluation mode
+ensures that the network operates in a deterministic fashion.
+--]]
+local model = torch.load(opt.model)
+model:evaluate()
 
 local predOut = hdf5.open(opt.pred, 'w')
 
