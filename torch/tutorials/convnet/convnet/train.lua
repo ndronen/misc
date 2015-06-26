@@ -27,6 +27,19 @@ function train(model, trainData, args)
   local zeroZeroVector = args.zeroZeroVector
   local renormers = args.renormers
 
+  for i,module in ipairs(model:listModules()) do
+    if module.weight ~= nil then
+      norms = module.weight:norm(2, 2)
+      normsLogger:add({
+        string.format('%d', epoch),
+        string.format('%d', i),
+        torch.typename(module),
+        string.format('%f', torch.min(norms)),
+        string.format('%f', torch.max(norms)),
+        string.format('%f', torch.mean(norms))})
+    end
+  end
+
   -- local vars
   local time = sys.clock()
 
@@ -168,18 +181,6 @@ function train(model, trainData, args)
   print('==> saving model to '..filename)
   torch.save(filename, model)
 
-  for i,module in ipairs(model:listModules()) do
-    if module.weight ~= nil then
-      norms = module.weight:norm(2, 2)
-      normsLogger:add({
-        string.format('%d', epoch),
-        string.format('%d', i),
-        torch.typename(module),
-        string.format('%f', torch.min(norms)),
-        string.format('%f', torch.max(norms)),
-        string.format('%f', torch.mean(norms))})
-    end
-  end
     
   -- next epoch
   confusion:zero()
