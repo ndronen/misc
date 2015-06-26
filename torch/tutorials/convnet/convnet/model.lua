@@ -79,28 +79,30 @@ buildModel = function(opt)
     lookupTable = kttorch.FixedLookupTable(lookupTable)
   end
   
-  if opt.maxWordNorm > 0 then
-    -- TODO: allocate the LookupTableRenormer here instead of explicitly
-    -- calling renorm() on the tensor.
-    --[[
-    if opt.type == 'cuda' then
-      -- I don't remember whether renorming in this complicated way
-      -- (copying, casting to float, and renorming) is necessary here,
-      -- but it is necessary in the main train loop, for reasons I've
-      -- yet to isolate.
-      -- 
-      lookupTable.weight = lookupTable.weight:clone():float():renorm(2, 1, opt.maxWordNorm)
-    else
-      lookupTable.weight:renorm(2, 1, opt.maxWordNorm)
-    end
-    --]]
-    if opt.forceWordsOnBall then
-      -- A bit of a hack.  Make all of the weights big so the L2 norms are greater
-      -- than the max.  This forces all words to have the same norm after renorming.
-      lookupTable:reset(10)
-    end
-    local wordRenormer = kttorch.LookupTableRenormer(lookupTable, opt.maxWordNorm)
-    wordRenormer:renorm()
+  --[[
+  Use LookupTableRenormer to make the l2 norms of the word representations
+  uniform before training.
+  --]]
+  local wordRenormer = nil 
+  local resetVal = 10
+
+  if opt.maxWordNorm == 0 then
+    wordRenormer = kttorch.LookupTableRenormer(lookupTable, 1)
+  else
+    wordRenormer = kttorch.LookupTableRenormer(lookupTable, opt.maxWordNorm)
+    -- Not sure if this does the right thing.
+    resetVal = opt.maxWordNorm * 2
+  end
+
+  if opt.forceWordsOnBall then
+    -- A bit of a hack.  Make all of the weights big so the L2 norms are greater
+    -- than the max.  This forces all words to have the same norm after renorming.
+    lookupTable:reset(resetVal)
+  end
+
+  wordRenormer:renorm()
+
+  if opt.renormFreq > 0 then
     renormers:add(wordRenormer)
   end
 
@@ -178,11 +180,20 @@ buildModel = function(opt)
     --  model:add(nn.TemporalConvolutionFB(inputFrameSize, opt.nKernels, kw, dw))
     -- else
     local conv = nn.TemporalConvolution(inputFrameSize, opt.nKernels, kw, dw)
+    --[[
+    Only renorm the convolutional filters if explicitly requested.
+    This is unlike the lookup table, where I renorm before training
+    even if the word representations won't be renormed during training.
+    I haven't been renorming the filters before training, and I don't
+    want to try something new just yet.
+    --]]
     if opt.maxFilterNorm > 0 then
       if opt.forceFiltersOnBall then
-        -- A bit of a hack.  Make all of the weights big so the L2 norms
-        -- are greater than the max.  This forces all words to have the
-        -- same norm after renorming.
+        --[[
+        A bit of a hack.  Make all of the weights big so the L2 norms
+        are greater than the max.  This forces all words to have the
+        same norm after renorming.
+        --]]
         conv:reset(10)
       end
       local convRenormer = kttorch.TemporalConvolutionRenormer(
