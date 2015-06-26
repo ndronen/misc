@@ -104,7 +104,7 @@ end
 
 loadData = function(opt) 
   -- Load train/test data.
-  if not file_exists(opt.trainFile) then
+  if not fileExists(opt.trainFile) then
     error('Train data file does not exist ' .. opt.trainFile)
   end
   
@@ -114,7 +114,7 @@ loadData = function(opt)
   local testHdfFile = nil
   local testHdfData = nil
   if opt.test then
-    if not file_exists(opt.testFile) then
+    if not fileExists(opt.testFile) then
       error('Test data file does not exist ' .. opt.testFile)
     end
     testHdfFile = hdf5.open(opt.testFile, 'r')
