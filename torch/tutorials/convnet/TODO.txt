@@ -1,9 +1,3 @@
-* Train convnet in cosine space using torch.renorm for word
-  representations and convnet/renorming.lfor components of
-  kernels.  Use (the as-yet not complete):
-
-    results/test-wiki/okanohara/1m-cosine-space/run.sh 
-
 * Data sets:
     * BNC
     * Wikipedia (same size as BNC)
@@ -18,6 +12,11 @@
     * RNN language model (co-trained with logistic layer?)
 
 * Error analysis:
+    * Port index.pkl file from Python to Torch.
+    * Write function to convert sentence to a vector, run it
+      through a trained network, and return the prediction 
+      and fraction of positive/negative activations at each
+      word.
     * Get test set predictions from a model.
     * Get indices of activations for each sentence in test set.
     * Classify features as either positive or negative.
@@ -141,3 +140,13 @@
   called once for the validation and test sets before training commences,
   and at the beginning of each epoch for the training set.
 
+* Train convnet in cosine space using torch.renorm for word
+  representations and convnet/renorming.lfor components of
+  kernels.  Use (the as-yet not complete):
+
+    results/test-wiki/okanohara/1m-cosine-space/run.sh 
+
+  The network appears to have no hope of converging using
+  this approach.  The weights of the higher layers of the
+  network hardly change.  Why does doing the convolution 
+  in cosine space cause this behavior?
