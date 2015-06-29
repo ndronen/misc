@@ -1,5 +1,7 @@
 local json = require 'cjson';
 local stringy = require 'stringy';
+local fbcunn =  require 'fbcunn';
+local kttorch = require 'kttorch';
 
 function fileExists(name)
   local f = io.open(name, "r")
@@ -80,4 +82,20 @@ function getLargestIndexValue(index)
   end
 
   return maxVal
+end
+
+function loadModelAndModelInfo(modelPath, modelInfoPath)
+  --[[
+  e.g.
+  modelPath = 'results/test-wiki/okanohara/1.9m/model.net'
+  modelInfoPath = '/tmp/sents-okanohara-wiki-dlm-train-initial-index.json'
+  model, modelInfo = loadModel(modelPath, modelInfoPath)
+  --]]
+  local modelInfo = loadModelInfo(modelInfoPath)
+  local model = torch.load(modelPath)
+  --[[
+  Set the model to evaluate (i.e. test) mode by default so it behaves deterministically.
+  --]]
+  model:evaluate()
+  return model, modelInfo
 end
