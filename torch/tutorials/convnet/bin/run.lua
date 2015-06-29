@@ -115,15 +115,21 @@ if opt.makeNegativeExamples then
 end
 
 while true do
+  local trainDataForEpoch = {
+    data=trainData.data,
+    labels=trainData.labels,
+    size=trainData.size
+  }
+
   if opt.makeNegativeExamples then
     local data, labels = makeCollobertAndWestonNegativeExamples(
         trainData.data, trainData.labels)
-    trainData.data = data 
-    trainData.labels = labels
+    trainDataForEpoch.data = data
+    trainDataForEpoch.labels = labels
   end
 
   -- TODO: change train() to return predictions.
-  train(model, trainData, {
+  train(model, trainDataForEpoch, {
     optimState=optimState,
     optimMethod=optimMethod,
     parameters=parameters,
