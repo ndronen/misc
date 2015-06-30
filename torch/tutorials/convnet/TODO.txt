@@ -1,5 +1,3 @@
-* Add makePermutationNegativeExamples to convnet/data.lua.
-
 * Move filter-classification code out of bin/classify-filters.lua and
   into a module in convnet/.  I could add a t-test function to compare
   mean filter outputs for positive and negative examples, but since I'll
@@ -181,3 +179,5 @@
   this approach.  The weights of the higher layers of the
   network hardly change.  Why does doing the convolution 
   in cosine space cause this behavior?
+
+* Add makePermutationNegativeExamples to convnet/data.lua.
