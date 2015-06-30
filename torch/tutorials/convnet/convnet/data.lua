@@ -1,35 +1,75 @@
 require 'hdf5'
 
 --[[
+By default, require all indices in a permutation to be other than the original sequence.
+--]]
+shuffleIndices = function(size, opts) 
+  local opts = opts or { requireFullShuffle=true }
+  local indices = nil
+  while true do
+    indices = torch.randperm(size)
+    if not opts.requireFullShuffle then
+      break
+    end
+
+    local ok = true
+    for i=1,indices:size(1) do
+      if indices[i] == i then
+        ok = false
+      end
+    end
+    if ok then break end
+  end
+  return indices
+end
+
+--[[
+--]]
+makePermutationNegativeExamples = function(data, labels, lengths, opts)
+  data = data:clone()
+  labels = labels:clone()
+
+  local opts = opts or {}
+  local padding = opts.padding or 2
+  local permutationWindowSize = opts.permutationWindowSize or 3
+  local negativeLabel = opts.negativeLabel or 1
+
+  -- Find examples that have the negative class's label, place
+  -- the permutation window randomly on the sentence, and permute
+  -- the words in the window.
+  for i=1,data:size(1) do
+    if labels[i] == negativeLabel then
+      local maxWindowStartOffset = lengths[i] - permutationWindowSize + 1
+      local windowStartIndex = padding + torch.random(maxWindowStartOffset) 
+      local values = data[i]:narrow(1, windowStartIndex, permutationWindowSize):clone()
+      local shuffledIndices = shuffleIndices(permutationWindowSize) + windowStartIndex - 1
+      for j=1,permutationWindowSize do
+        data[i][shuffledIndices[j]] = values[j]
+      end
+    end
+  end
+
+  return data, labels
+end
+
+--[[
 --]]
 makeCollobertAndWestonNegativeExamples = function(data, labels, opts)
   data = data:clone()
   labels = labels:clone()
 
   local opts = opts or {}
-
-  local negativeLabel = opts.negativeLabel
-  if negativeLabel == nil then
-    negativeLabel = 1
-  end
-
-  local maxIndex = opts.maxIndex
-  if maxIndex == nil then
-    maxIndex = torch.max(data)
-  end
-
-  local padding = opts.padding
-  if padding == nil then
-    padding = 2
-  end
+  local negativeLabel = opts.negativeLabel or 1
+  local maxIndex = opts.maxIndex or torch.max(data)
+  local padding = opts.padding or 2
 
   -- Find examples that have the negative class's label and replace
   -- one word with a random word.  A word here is an index into the
   -- vocabulary.
   for i=1,data:size(1) do
-    if labels[i] == negativeLabel then
-      newWord = torch.random(maxIndex)
-      replacementIndex = torch.random(padding + 1, data:size(2) - padding)
+    if labels[i] == opts.negativeLabel then
+      local newWord = torch.random(opts.maxIndex)
+      local replacementIndex = torch.random(opts.padding + 1, data:size(2) - opts.padding)
       data[i][replacementIndex] = newWord
     end
   end
