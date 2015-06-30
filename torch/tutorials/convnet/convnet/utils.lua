@@ -38,13 +38,18 @@ function loadModelInfo(path)
   return modelInfo
 end
 
+function replaceDigits(s)
+  return string.gsub(s, "[0-9]", "DIGIT")
+end
+
 function separateWordsAndPunctuation(s)
   return string.gsub(s, "(['.,:;?!\"])", " %1 ")
 end
 
 function tokenize(s)
   local toks = {}
-  local s = separateWordsAndPunctuation(s)
+  local s = replaceDigits(s)
+  s = separateWordsAndPunctuation(s)
 
   for tok in string.gmatch(s, "%S+") do
     table.insert(toks, tok)
