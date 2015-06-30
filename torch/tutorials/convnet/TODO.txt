@@ -1,3 +1,5 @@
+* Add makePermutationNegativeExamples to convnet/data.lua.
+
 * Data sets:
     * BNC
     * Wikipedia (same size as BNC)
