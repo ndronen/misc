@@ -1,16 +1,33 @@
 * Add makePermutationNegativeExamples to convnet/data.lua.
+
 * Move filter-classification code out of bin/classify-filters.lua and
-  into a module in convnet/.
+  into a module in convnet/.  I could add a t-test function to compare
+  mean filter outputs for positive and negative examples, but since I'll
+  be doing the evaluation using networks with no hidden layers, perhaps
+  I can simply use the sign and magnitude of the weight of the softmax
+  output layer as the classifier.
+
 * Given a sentence and a model (and possibly a vector identifying the
   model's positive and negative filters), output the model's prediction, 
   its softmax output, and -- for each position in a sentence -- both
   the number of positive or negative filters it triggered and its contribution
   to a positive or negative prediction.
 
-* Train Collobert & Weston model with no hidden layers.
-    * results/test-wiki/collobert/1m-no-hidden/run.sh
-* Train Okanohara model with no hidden layers.
-    * results/test-wiki/okanohara/1m-no-hidden/run.sh
+* Final models:
+    * Wikipedia
+        * Collobert & Weston model with no hidden layers.
+            * results/wiki/collobert/1m-no-hidden/run.sh
+        * Okanohara model with no hidden layers.
+            * results/wiki/okanohara/1m-no-hidden/run.sh
+        * Permutation model with no hidden layers.
+            * results/wiki/permutation/1m-no-hidden/run.sh
+    * BNC
+        * Collobert & Weston model with no hidden layers.
+            * results/test-bnc/collobert/no-hidden/run.sh
+        * Okanohara model with no hidden layers.
+            * results/test-bnc/okanohara/no-hidden/run.sh
+        * Permutation model with no hidden layers.
+            * results/test-bnc/permutation/no-hidden/run.sh
 
 * Data sets:
     * BNC
