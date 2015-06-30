@@ -25,11 +25,12 @@ end
 
 --[[
 --]]
-makePermutationNegativeExamples = function(data, labels, lengths, opts)
+makePermutationNegativeExamples = function(data, labels, opts)
   data = data:clone()
   labels = labels:clone()
 
   local opts = opts or {}
+  local lengths = opts.lengths or error('lengths is required')
   local padding = opts.padding or 2
   local permutationWindowSize = opts.permutationWindowSize or 3
   local negativeLabel = opts.negativeLabel or 1
@@ -188,6 +189,7 @@ loadData = function(opt)
   trainData = {
     labels=trainHdfData.y:narrow(1, 1, opt.nTrain),
     data=trainHdfData.X:narrow(1, 1, opt.nTrain),
+    len=trainHdfData.len:narrow(1, 1, opt.nTrain),
     size=function() return opt.nTrain end
   }
   
@@ -196,19 +198,22 @@ loadData = function(opt)
     validData = {
        labels=trainHdfData.y:narrow(1, start, opt.nValidation),
        data=trainHdfData.X:narrow(1, start, opt.nValidation),
+       len=trainHdfData.len:narrow(1, start, opt.nValidation),
        size=function() return opt.nValidation end
     }
   end
   
   if opt.test then
     testData = {
-      labels = testHdfData.y,
-      data = testHdfData.X,
-      size = function() return testHdfData.y:size(1) end
+      labels=testHdfData.y,
+      data=testHdfData.X,
+      len=testHdfData.len,
+      size=function() return testHdfData.y:size(1) end
     } 
   end
 
   if opt.minTrainSentLength > 0 then
+    error('filtering by length is currently broken')
     local X, y = filterByLength(
         trainData.data, trainData.labels,
         opt.minTrainSentLength, 'min',
@@ -217,6 +222,7 @@ loadData = function(opt)
     trainData.labels = y
     trainData.size = function() return trainData.data:size(1) end
   elseif opt.maxTrainSentLength > 0 then
+    error('filtering by length is currently broken')
     local X, y = filterByLength(
         trainData.data, trainData.labels,
         opt.maxTrainSentLength, 'max',

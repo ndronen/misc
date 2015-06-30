@@ -45,7 +45,9 @@ cmd:option('-renormFreq', 0, 'number of updates after which to renorm weights')
 cmd:option('-spatial', false, 'train a spatial convolutional network')
 cmd:option('-minTrainSentLength', 0, 'minimum length of a sentence for training: (disabled=0)')
 cmd:option('-maxTrainSentLength', 0, 'maximum length of a sentence for training: (disabled=0)')
-cmd:option('-makeNegativeExamples', false, 'whether to make negative examples; when true, negative valdiation and test set examples are made ones and negative training set examples are made anew before each epoch')
+cmd:option('-makeCollobertNegativeExamples', false, 'whether to make Collobert & Weston-style negative examples; when true, negative valdiation and test set examples are made ones and negative training set examples are made anew before each epoch')
+cmd:option('-makePermutationNegativeExamples', false, 'whether to make permutation-style negative examples; when true, negative valdiation and test set examples are made ones and negative training set examples are made anew before each epoch')
+
 cmd:text()
 
 local opt = cmd:parse(arg or {})
@@ -99,16 +101,28 @@ local confusion = buildConfusionMatrix(trainData.labels)
 local parameters, gradParameters = model:getParameters()
 local epoch = 1
 
-if opt.makeNegativeExamples then
+local negativeExampleMaker = nil
+
+if opt.makeCollobertNegativeExamples and opt.makePermutationNegativeExamples then
+  error('Collobert and permutation negative examples are mutually exclusive')
+end
+
+if opt.makeCollobertNegativeExamples then
+  negativeExampleMaker = makeCollobertAndWestonNegativeExamples
+elseif opt.makePermutationNegativeExamples then
+  negativeExampleMaker = makePermutationNegativeExamples
+end
+
+if negativeExampleMaker then
   if validData ~= nil then
-    local data, labels = makeCollobertAndWestonNegativeExamples(
-        validData.data, validData.labels)
+    local data, labels = negativeExampleMaker(
+        validData.data, validData.labels, { lengths=validData.len })
     validData.data = data
     validData.labels = labels
   end
   if testData ~= nil then
-    local data, labels = makeCollobertAndWestonNegativeExamples(
-        testData.data, testData.labels)
+    local data, labels = negativeExampleMaker(
+        testData.data, testData.labels, { lengths=testData.len })
     testData.data = data
     testData.labels = labels
   end
@@ -122,8 +136,8 @@ while true do
   }
 
   if opt.makeNegativeExamples then
-    local data, labels = makeCollobertAndWestonNegativeExamples(
-        trainData.data, trainData.labels)
+    local data, labels = negativeExampleMaker(
+        trainData.data, trainData.labels, { lengths=trainData.len })
     trainDataForEpoch.data = data
     trainDataForEpoch.labels = labels
   end
