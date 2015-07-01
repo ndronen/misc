@@ -68,9 +68,9 @@ makeCollobertAndWestonNegativeExamples = function(data, labels, opts)
   -- one word with a random word.  A word here is an index into the
   -- vocabulary.
   for i=1,data:size(1) do
-    if labels[i] == opts.negativeLabel then
-      local newWord = torch.random(opts.maxIndex)
-      local replacementIndex = torch.random(opts.padding + 1, data:size(2) - opts.padding)
+    if labels[i] == negativeLabel then
+      local newWord = torch.random(maxIndex)
+      local replacementIndex = torch.random(padding + 1, data:size(2) - padding)
       data[i][replacementIndex] = newWord
     end
   end
