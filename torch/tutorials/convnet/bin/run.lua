@@ -135,7 +135,7 @@ while true do
     size=trainData.size
   }
 
-  if opt.makeNegativeExamples then
+  if negativeExampleMaker then
     local data, labels = negativeExampleMaker(
         trainData.data, trainData.labels, { lengths=trainData.len })
     trainDataForEpoch.data = data
