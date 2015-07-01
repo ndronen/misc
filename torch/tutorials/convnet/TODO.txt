@@ -1,3 +1,7 @@
+* Something seems broken with Collobert-style negative examples.  The
+  model is not converging after I checked in changes to convnet/data.lua
+  and bin/run.lua.  Find and fix.
+
 * Move filter-classification code out of bin/classify-filters.lua and
   into a module in convnet/.  I could add a t-test function to compare
   mean filter outputs for positive and negative examples, but since I'll
@@ -14,18 +18,18 @@
 * Final models:
     * Wikipedia
         * Collobert & Weston model with no hidden layers.
-            * results/wiki/collobert/1m-no-hidden/run.sh
+            * results/wiki/collobert/1m/run.sh
         * Okanohara model with no hidden layers.
-            * results/wiki/okanohara/1m-no-hidden/run.sh
+            * results/wiki/okanohara/1m/run.sh
         * Permutation model with no hidden layers.
-            * results/wiki/permutation/1m-no-hidden/run.sh
+            * results/wiki/permutation/1m/run.sh
     * BNC
         * Collobert & Weston model with no hidden layers.
-            * results/test-bnc/collobert/no-hidden/run.sh
+            * results/test-bnc/collobert/400k/run.sh
         * Okanohara model with no hidden layers.
-            * results/test-bnc/okanohara/no-hidden/run.sh
+            * results/test-bnc/okanohara/400k/run.sh
         * Permutation model with no hidden layers.
-            * results/test-bnc/permutation/no-hidden/run.sh
+            * results/test-bnc/permutation/400k/run.sh
 
 * Data sets:
     * BNC
