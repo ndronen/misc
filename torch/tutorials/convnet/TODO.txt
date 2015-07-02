@@ -6,7 +6,10 @@
 
     1) Counting the positive or negative filters triggered.  Related to
        this is highlighting the positions in the sentence that triggered
-       no filters of any kind.
+       no filters of any kind.  (I'm seeing gaps in sentences where no
+       filters are being triggered, which makes me wonder whether I should
+       switch from nn.ReLU to nn.Tanh, and to move the nn.Tanh to above
+       the max pooling layer.)
     2) Performing a sensitivity analysis or ablation study; quantifying
        the change in the model's output when the output of filters
        triggered by an n-gram are zeroed.  
