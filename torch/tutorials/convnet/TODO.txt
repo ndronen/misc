@@ -1,19 +1,24 @@
-* Something seems broken with Collobert-style negative examples.  The
-  model is not converging after I checked in changes to convnet/data.lua
-  and bin/run.lua.  Find and fix.
-
 * Move filter-classification code out of bin/classify-filters.lua and
-  into a module in convnet/.  I could add a t-test function to compare
-  mean filter outputs for positive and negative examples, but since I'll
-  be doing the evaluation using networks with no hidden layers, perhaps
-  I can simply use the sign and magnitude of the weight of the softmax
-  output layer as the classifier.
+  into a module in convnet/.  I'll need to do more coding to support
+  the model phenomenology and error analysis stage of the research.
+  There is, for example, more than one way to measure the polarity
+  (positive or negative) of an n-gram.
+
+    1) Counting the positive or negative filters triggered.
+    2) Performing a sensitivity analysis or ablation study; quantifying
+       the change in the model's output when the output of filters
+       triggered by an n-gram are zeroed.  
 
 * Given a sentence and a model (and possibly a vector identifying the
   model's positive and negative filters), output the model's prediction, 
   its softmax output, and -- for each position in a sentence -- both
   the number of positive or negative filters it triggered and its contribution
   to a positive or negative prediction.
+
+* Implement a builder that takes a trained temporal convolutional model
+  and builds a model that has weight updates disabled for all layers
+  and that has in its first layer a sentence matrix (possibly random,
+  possibly consisting of vectors from a trained lookup table).
 
 * Final models:
     * Wikipedia
@@ -185,3 +190,7 @@
   in cosine space cause this behavior?
 
 * Add makePermutationNegativeExamples to convnet/data.lua.
+
+* Something seems broken with Collobert-style negative examples.  The
+  model is not converging after I checked in changes to convnet/data.lua
+  and bin/run.lua.  Find and fix.
