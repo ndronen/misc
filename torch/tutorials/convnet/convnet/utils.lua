@@ -89,6 +89,15 @@ function getLargestIndexValue(index)
   return maxVal
 end
 
+function loadModel(modelPath)
+  local model = torch.load(modelPath)
+  -- Set the model to evaluate (i.e. test) mode by default so it behaves
+  -- deterministically.
+  model:evaluate()
+
+  return model
+end
+
 function loadModelAndModelInfo(modelPath, modelInfoPath)
   --[[
   e.g.
@@ -97,10 +106,6 @@ function loadModelAndModelInfo(modelPath, modelInfoPath)
   model, modelInfo = loadModel(modelPath, modelInfoPath)
   --]]
   local modelInfo = loadModelInfo(modelInfoPath)
-  local model = torch.load(modelPath)
-  --[[
-  Set the model to evaluate (i.e. test) mode by default so it behaves deterministically.
-  --]]
-  model:evaluate()
+  local model = loadModel(modelPath)
   return model, modelInfo
 end

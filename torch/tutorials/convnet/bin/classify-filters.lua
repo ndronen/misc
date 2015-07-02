@@ -4,6 +4,7 @@ require('hdf5');
 require('kttorch');
 require('fbcunn');
 require('convnet.inspection');
+require('convnet.utils');
 
 local cmd = torch.CmdLine()
 cmd:text()
@@ -19,7 +20,7 @@ local opt = cmd:parse(arg or {})
 -- Load data and model.
 local dataFile = hdf5.open(opt.data, 'r')
 local data = dataFile:read():all()
-local model = torch.load(opt.model)
+local model = loadModel(opt.model)
 
 -- Run the data through the model while recording the activations of the
 -- filters, then determine whether filters are conditioned to detect
