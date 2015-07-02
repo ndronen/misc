@@ -13,6 +13,7 @@ cmd:text()
 cmd:text('Options:')
 cmd:argument('-model', 'path to a serialized model')
 cmd:argument('-data', 'path to data for testing (HDF5 format with data in "X" and labels in "y")')
+cmd:argument('-output', 'path to file to which to write output')
 cmd:text()
 
 local opt = cmd:parse(arg or {})
@@ -34,7 +35,7 @@ local modules = model:findModules('nn.TemporalConvolution')
 assert(#modules == 1)
 filterInfo.filterWidth = torch.Tensor(1):fill(modules[1].kW)
 
-local output = hdf5.open('filter-info.h5', 'w')
+local output = hdf5.open(opt.output, 'w')
 
 for k,v in pairs(filterInfo) do
   output:write(k, v)
