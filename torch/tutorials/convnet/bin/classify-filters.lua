@@ -3,70 +3,40 @@
 require('hdf5');
 require('kttorch');
 require('fbcunn');
+require('convnet.inspection');
 
 local cmd = torch.CmdLine()
 cmd:text()
 cmd:text('Classify filters of a convnet')
 cmd:text()
 cmd:text('Options:')
-cmd:argument('-input', 'path to test data file (HDF5 format)')
-cmd:argument('-pred', 'path to prediction file (HDF5 format)')
-cmd:argument('-analysis', 'path to analysis file (HDF5 format)')
+cmd:argument('-model', 'path to a serialized model')
+cmd:argument('-data', 'path to data for testing (HDF5 format with data in "X" and labels in "y")')
 cmd:text()
 
 local opt = cmd:parse(arg or {})
 
--- Load test data and predictions.
-local testFile = hdf5.open(opt.input, 'r')
-local testData = testFile:read():all()
+-- Load data and model.
+local dataFile = hdf5.open(opt.data, 'r')
+local data = dataFile:read():all()
+local model = torch.load(opt.model)
 
--- Prediction data has fields indices, output, and pred.
-local predFile = hdf5.open(opt.pred, 'r')
-local predData = predFile:read():all()
+-- Run the data through the model while recording the activations of the
+-- filters, then determine whether filters are conditioned to detect
+-- features of positive or negative examples.
+local recordingOpts = { activations=true }
+local pred, recording = predictAndRecordConvolution(model, data.X, recordingOpts)
+local filterInfo = computeFilterPolarities(data.y, recording.activations)
 
-local anOut = hdf5.open(opt.analysis, 'w')
+-- Add filter width to output.
+local modules = model:findModules('nn.TemporalConvolution')
+assert(#modules == 1)
+filterInfo.filterWidth = torch.Tensor(1):fill(modules[1].kW)
 
---[[
-Analysis consists of a classification of the filters of a convnet.
-1) Compute mean output of each filter for the positive examples.
-2) Compute mean output of each filter for the negative examples.
-3) Take differences d of those means (mean_pos - mean_neg).
-4) Positive filters are those where d > 0, negative d < 0.
---]]
+local output = hdf5.open('filter-info.h5', 'w')
 
-local POSITIVE = 2
-local NEGATIVE = 1
+for k,v in pairs(filterInfo) do
+  output:write(k, v)
+end
 
-ncol = predData.output:size(2)
-
-posIndices = testData.y:eq(POSITIVE)
-posIndices:resize(posIndices:size(1), 1)
-posIndices = posIndices:expand(predData.output:size(1), predData.output:size(2))
-posOutput = predData.output[posIndices]
-posOutput:resize(posOutput:nElement()/ncol, ncol)
-meanPos = posOutput:mean(1)
-
-negIndices = testData.y:eq(NEGATIVE)
-negIndices:resize(negIndices:size(1), 1)
-negIndices = negIndices:expand(predData.output:size(1), predData.output:size(2))
-negOutput = predData.output[negIndices]
-negOutput:resize(negOutput:nElement()/ncol, ncol)
-meanNeg = negOutput:mean(1)
-
-diffMean = meanPos - meanNeg
-posFilters = diffMean:gt(0)
-negFilters = diffMean:lt(0)
-disabledFilters = diffMean:eq(0)
-
-anOut:write('meanPos', meanPos)
-anOut:write('meanNeg', meanNeg)
-anOut:write('diffMean', diffMean)
-anOut:write('posFilters', posFilters)
-anOut:write('negFilters', negFilters)
-anOut:write('disabledFilters', disabledFilters)
-anOut:write('indices', predData.indices)
-anOut:write('output', predData.output)
-anOut:write('pred', predData.pred)
-anOut:write('filterWidth', predData.filterWidth)
-
-anOut:close()
+output:close()
