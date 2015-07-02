@@ -4,21 +4,24 @@
   There is, for example, more than one way to measure the polarity
   (positive or negative) of an n-gram.
 
-    1) Counting the positive or negative filters triggered.
+    1) Counting the positive or negative filters triggered.  Related to
+       this is highlighting the positions in the sentence that triggered
+       no filters of any kind.
     2) Performing a sensitivity analysis or ablation study; quantifying
        the change in the model's output when the output of filters
        triggered by an n-gram are zeroed.  
 
-* Given a sentence and a model (and possibly a vector identifying the
-  model's positive and negative filters), output the model's prediction, 
-  its softmax output, and -- for each position in a sentence -- both
-  the number of positive or negative filters it triggered and its contribution
-  to a positive or negative prediction.
+* Given a sentence, a model, and a vector identifying the model's positive
+  and negative filters, output the model's prediction, its softmax output,
+  and -- for each position in a sentence -- both the number of positive
+  or negative filters it triggered and its contribution to a positive
+  or negative prediction.
 
 * Implement a builder that takes a trained temporal convolutional model
   and builds a model that has weight updates disabled for all layers
   and that has in its first layer a sentence matrix (possibly random,
-  possibly consisting of vectors from a trained lookup table).
+  possibly consisting of vectors from a trained lookup table).  The
+  purpose of this builder is to 
 
 * Final models:
     * Wikipedia
