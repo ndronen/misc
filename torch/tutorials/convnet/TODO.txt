@@ -14,6 +14,8 @@
        the change in the model's output when the output of filters
        triggered by an n-gram are zeroed.  
 
+* Implement convnet.inspection.sumMagnitudeOfActivations.
+
 * Given a sentence, a model, and a vector identifying the model's positive
   and negative filters, output the model's prediction, its softmax output,
   and -- for each position in a sentence -- both the number of positive
