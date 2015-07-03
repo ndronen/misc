@@ -6,7 +6,6 @@ predictAndRecordConvolution = function(model, data, opts)
   local recordActivations = opts.activations or false
   local recorders = {}
 
-
   if recordIndices or recordActivations then
     local modules = model:findModules('nn.TemporalMaxPooling')
     if #modules == 0 then
@@ -72,5 +71,25 @@ computeFilterPolarities = function(labels, activations, opts)
     disabledFilters=disabledFilters,
     polarities=polarities
   }
+end
+
+countPolarityOfActivations = function(model, input, positiveFilters, negativeFilters, filterWidth)
+  -- Assuming input is a single vector for now.
+  local recordingOpts = { activations=true, indices=true }
+  local input = input:clone():resize(1, input:size(1))
+  local pred, recording = predictAndRecordConvolution(model, input, recordingOpts)
+
+  local posPolarity = torch.zeros(input:size(2))
+  local negPolarity = torch.zeros(input:size(2))
+
+  for i=1,torch.max(recording.indices) do
+    posPolarity[i] = torch.sum(recording.indices:eq(i):cmul(filterInfo.positiveFilters))
+    negPolarity[i] = torch.sum(recording.indices:eq(i):cmul(filterInfo.negativeFilters))
+  end
+
+  return posPolarity, negPolarity
+end
+
+sumMagnitudeOfActivations = function(model, input, positiveFilters, negativeFilters, filterWidth)
 
 end
