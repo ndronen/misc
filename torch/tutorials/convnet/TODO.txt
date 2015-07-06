@@ -12,15 +12,22 @@
        the max pooling layer.)
     2) Performing a sensitivity analysis or ablation study; quantifying
        the change in the model's output when the output of filters
-       triggered by an n-gram are zeroed.  
-
-* Implement convnet.inspection.sumMagnitudeOfActivations.
+       triggered by an n-gram are modified in some way.  The words -- or
+       more precisely, their indices in the vocabulary -- could be
+       replaced by random indices or by the index of the unknown word.
+       To obtain a stable estimate of the contribution of a particular
+       n-gram, any sensitivity analysis that replaces existing tokens
+       with random ones should be repeated a number of times.  (A related
+       question is whether or when replacing existing tokens with random
+       ones is the correct procedure for performing a sensitivity analysis. 
+       This question is out of the scope of the current study.)
 
 * Given a sentence, a model, and a vector identifying the model's positive
   and negative filters, output the model's prediction, its softmax output,
   and -- for each position in a sentence -- both the number of positive
   or negative filters it triggered and its contribution to a positive
-  or negative prediction.
+  or negative prediction (i.e. turn foo.lua into a set of functions
+  in convnet/*).
 
 * Implement a builder that takes a trained temporal convolutional model
   and builds a model that has weight updates disabled for all layers
@@ -58,15 +65,20 @@
     * RNN language model (co-trained with logistic layer?)
 
 * Error analysis:
-    * Port index.pkl file from Python to Torch.
-    * Write function to convert sentence to a vector, run it
-      through a trained network, and return the prediction 
-      and fraction of positive/negative activations at each
-      word.
-    * Get test set predictions from a model.
-    * Get indices of activations for each sentence in test set.
-    * Classify features as either positive or negative.
-    * Here the workflow changes to Python:
+    * TODO
+        * Compare log probabilities that our model assigns to sentences
+          to to log probabilities assigned by a language model.
+          The hope is that our model is weakly -- or at least not strongly
+          -- correlated with a language model.
+    * Done
+        * Port index.pkl file from Python to Torch.
+        * Write function to convert sentence to a vector, run it
+          through a trained network, and return the prediction 
+          and fraction of positive/negative activations at each
+          word.
+        * Get test set predictions from a model.
+        * Get indices of activations for each sentence in test set.
+        * Classify features as either positive or negative.
         * For each sentence 
             * Get outputs/indices of activations from positive filters.
             * Then, for each position in the sentence, sum the outputs
@@ -75,10 +87,6 @@
               of the filter is copied to the words at positions i,
               i+1, ..., i+k-1.)
             * Do the same for the negative filters.
-    * Compare log probabilities that our model assigns to sentences to
-      to log probabilities assigned by a language model.  The hope is
-      that our model is weakly -- or at least not strongly -- correlated
-      with a language model.
 
 * Curriculum learning
     * Try training first using only long positive and negative examples.
@@ -202,3 +210,5 @@
 * Something seems broken with Collobert-style negative examples.  The
   model is not converging after I checked in changes to convnet/data.lua
   and bin/run.lua.  Find and fix.
+
+* Implement convnet.inspection.sumMagnitudeOfActivations.
