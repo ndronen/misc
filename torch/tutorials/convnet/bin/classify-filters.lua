@@ -14,6 +14,8 @@ cmd:text('Options:')
 cmd:argument('-model', 'path to a serialized model')
 cmd:argument('-data', 'path to data for testing (HDF5 format with data in "X" and labels in "y")')
 cmd:argument('-output', 'path to file to which to write output')
+cmd:option('-gcFreq', 100, 'frequency of garbage collection calling kttorch.predict')
+cmd:option('-verbose', false, 'print more information to terminal during execution')
 cmd:text()
 
 local opt = cmd:parse(arg or {})
@@ -26,7 +28,7 @@ local model = loadModel(opt.model)
 -- Run the data through the model while recording the activations of the
 -- filters, then determine whether filters are conditioned to detect
 -- features of positive or negative examples.
-local recordingOpts = { activations=true }
+local recordingOpts = { activations=true, gcFreq=opt.gcFreq, verbose=opt.verbose }
 local pred, recording = predictAndRecordConvolution(model, data.X, recordingOpts)
 local filterInfo = computeFilterPolarities(data.y, recording.activations)
 
