@@ -70,15 +70,18 @@ cmd:text()
 
 local opt = cmd:parse(arg or {})
 
--- model = torch.load('results/test-wiki/okanohara/1.9m/model.net')
--- modelInfo = loadModelInfo('/tmp/sents-okanohara-wiki-dlm-train-initial-index.json')
--- filterInfoFile = hdf5.open('results/test-wiki/okanohara/1.9m/filter-info-test-data.h5')
-
 -- Set model, model info, input, etc.
 local model = torch.load(opt.model)
 local modelInfo = loadModelInfo(opt.modelInfo)
 local filterInfoFile = hdf5.open(opt.filterInfo)
 local filterInfo = filterInfoFile:read():all()
 
-local sentence = 'What is a practical skill?'
-tokenActivations(model, modelInfo, filterInfo, sentence, opt)
+if fileExists(opt.sentence) then
+  local f = io.open(opt.sentence, 'r')
+  for sentence in io.lines(opt.sentence) do
+    tokenActivations(model, modelInfo, filterInfo, sentence, opt)
+  end
+else
+  tokenActivations(model, modelInfo, filterInfo, opt.sentence, opt)
+end
+
