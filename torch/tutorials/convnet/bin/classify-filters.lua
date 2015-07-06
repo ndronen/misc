@@ -3,7 +3,7 @@
 require('hdf5');
 require('kttorch');
 require('fbcunn');
-require('convnet.inspection');
+require('convnet.inspect');
 require('convnet.utils');
 
 local cmd = torch.CmdLine()
