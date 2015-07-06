@@ -1,9 +1,12 @@
-require('kttorch');
+require 'kttorch';
+require 'convnet.utils';
 
 predictAndRecordConvolution = function(model, data, opts) 
   local opts = opts or {}
   local recordIndices = opts.indices or false
   local recordActivations = opts.activations or false
+  local verbose = opts.verbose or false
+  local gcFreq = opts.gcFreq or 100
   local recorders = {}
 
   if recordIndices or recordActivations then
@@ -20,7 +23,9 @@ predictAndRecordConvolution = function(model, data, opts)
     end
   end
 
-  local pred = kttorch.predict(model, data, recorders)
+  local predictOpt = { verbose=verbose, gcFreq=gcFreq }
+
+  local pred = kttorch.predict(model, data, recorders, predictOpt)
   local recordings = {}
   if recordIndices then
     recordings.indices = recorders.indices:getRecording()
@@ -73,23 +78,32 @@ computeFilterPolarities = function(labels, activations, opts)
   }
 end
 
-countPolarityOfActivations = function(model, input, positiveFilters, negativeFilters, filterWidth)
-  -- Assuming input is a single vector for now.
-  local recordingOpts = { activations=true, indices=true }
-  local input = input:clone():resize(1, input:size(1))
-  local pred, recording = predictAndRecordConvolution(model, input, recordingOpts)
+countPolarityOfActivations = function(recording, input, positiveFilters, negativeFilters)
+  -- Assume for now that input is a single vector.
 
   local posPolarity = torch.zeros(input:size(2))
   local negPolarity = torch.zeros(input:size(2))
 
   for i=1,torch.max(recording.indices) do
-    posPolarity[i] = torch.sum(recording.indices:eq(i):cmul(filterInfo.positiveFilters))
-    negPolarity[i] = torch.sum(recording.indices:eq(i):cmul(filterInfo.negativeFilters))
+    posPolarity[i] = torch.sum(recording.indices:eq(i):cmul(positiveFilters))
+    negPolarity[i] = torch.sum(recording.indices:eq(i):cmul(negativeFilters))
   end
 
   return posPolarity, negPolarity
 end
 
-sumMagnitudeOfActivations = function(model, input, positiveFilters, negativeFilters, filterWidth)
+sumMagnitudeOfActivations = function(recording, input, positiveFilters, negativeFilters)
+  -- Assume for now that input is a single vector.
+  local posMagnitude = torch.zeros(input:size(2))
+  local negMagnitude = torch.zeros(input:size(2))
 
+  for i=1,torch.max(recording.indices) do
+    local posMask = recording.indices:eq(i):cmul(positiveFilters)
+    local negMask = recording.indices:eq(i):cmul(negativeFilters)
+
+    posMagnitude[i] = torch.sum(recording.activations[posMask])
+    negMagnitude[i] = torch.sum(recording.activations[negMask])
+  end
+
+  return posMagnitude, negMagnitude
 end
