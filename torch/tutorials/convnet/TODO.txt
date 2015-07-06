@@ -29,6 +29,10 @@
   or negative prediction (i.e. turn foo.lua into a set of functions
   in convnet/*).
 
+* Write a suite of scripts for scoring the sentences of an essay.
+  The input is a file containing an essay.  The output is, for each
+  sentence, the probability that it is mostly well formed.
+
 * Implement a builder that takes a trained temporal convolutional model
   and builds a model that has weight updates disabled for all layers
   and that has in its first layer a sentence matrix (possibly random,
