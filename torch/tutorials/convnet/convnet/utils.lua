@@ -3,6 +3,13 @@ local stringy = require 'stringy';
 local fbcunn =  require 'fbcunn';
 local kttorch = require 'kttorch';
 
+function mergeTables(t1, t2)
+  for k,v in pairs(t2) do
+    t1[k] = v
+  end
+  return t1
+end
+
 function fileExists(name)
   local f = io.open(name, "r")
   if f ~= nil then
@@ -60,8 +67,9 @@ end
 
 function convertSentenceToIndices(s, modelInfo)
   local indices = {}
+  local tokens = tokenize(s)
 
-  for i, tok in ipairs(tokenize(s)) do
+  for i, tok in ipairs(tokens) do
     if modelInfo.index[tok] ~= nil then
       table.insert(indices, modelInfo.index[tok])
     else
@@ -72,9 +80,11 @@ function convertSentenceToIndices(s, modelInfo)
   for i=1,modelInfo.padding do
     table.insert(indices, 1, modelInfo.zeroVector)
     table.insert(indices, modelInfo.zeroVector)
+    table.insert(tokens, 1, "")
+    table.insert(tokens, "")
   end
 
-  return torch.Tensor(indices)
+  return torch.Tensor(indices), tokens
 end
 
 function getLargestIndexValue(index)
