@@ -1,4 +1,5 @@
 require 'hdf5'
+require 'randomkit'
 
 --[[
 By default, require all indices in a permutation to be other than the original sequence.
@@ -30,14 +31,12 @@ makePermutationNegativeExamples = function(data, labels, opts)
   labels = labels:clone()
 
   local opts = opts or {}
-  local lengths = opts.lengths or error('lengths is required')
-  local padding = opts.padding or 2
-  local noiseWindowSize = opts.noiseWindowSize
-  local noiseWindowFraction = opts.noiseWindowFraction
   local negativeLabel = opts.negativeLabel or 1
+  local padding = opts.padding or 2
+  local lengths = opts.lengths or error('lengths is required')
 
-  if noiseWindowSize == nil and noiseWindowFraction == nil then
-    error("either noiseWindowSize or noiseWindowFraction is required in 'opts'")
+  if opts.noiseCount == nil and opts.noiseFraction == nil then
+    error("either noiseCount or noiseFraction is required in 'opts'")
   end
 
   -- Find examples that have the negative class's label, place
@@ -45,9 +44,9 @@ makePermutationNegativeExamples = function(data, labels, opts)
   -- the words in the window.
   for i=1,data:size(1) do
     if labels[i] == negativeLabel then
-      local windowSize = opts.noiseWindowSize
+      local windowSize = opts.noiseCount
       if windowSize == nil then
-        windowSize = math.floor(lengths[i] * opts.noiseWindowFraction)
+        windowSize = math.floor(lengths[i] * opts.noiseFraction)
       end
       local maxWindowStartOffset = lengths[i] - windowSize + 1
       local windowStartIndex = padding + torch.random(maxWindowStartOffset) 
@@ -64,6 +63,42 @@ end
 
 --[[
 --]]
+extractKeysFromTable = function(set)
+  local keys = {}
+  local i = 1
+
+  for k,v in pairs(set) do
+    keys[i] = k
+    i = i+1
+  end
+
+  return keys
+end
+
+--[[
+--]]
+sampleReplacementIndices = function(numToReplace, low, high)
+  local replacementSet = {}
+  local numTries = 0
+  while #extractKeysFromTable(replacementSet) < numToReplace do
+    if numTries > numToReplace * 10 then
+      error("not able to find enough replacement indices;" ..
+        " numTries " .. numTries ..
+        " numToReplace " .. numToReplace ..
+        " low " .. low ..
+        " high " .. high)
+    end
+    numTries = numTries + 1
+
+    local replacementIndex = torch.random(low, high)
+    replacementSet[replacementIndex] = true
+  end
+
+  return extractKeysFromTable(replacementSet)
+end
+
+--[[
+--]]
 makeReplacementNegativeExamples = function(data, labels, opts)
   data = data:clone()
   labels = labels:clone()
@@ -71,6 +106,12 @@ makeReplacementNegativeExamples = function(data, labels, opts)
   local opts = opts or {}
   local negativeLabel = opts.negativeLabel or 1
   local padding = opts.padding or 2
+  local lengths = opts.lengths or error('lengths is required')
+
+  if opts.noiseCount == nil and opts.noiseFraction == nil then
+    error("either noiseCount or noiseFraction is required in 'opts'")
+  end
+
   local maxIndex = opts.maxIndex or torch.max(data)
 
   -- Find examples that have the negative class's label and replace
@@ -78,9 +119,24 @@ makeReplacementNegativeExamples = function(data, labels, opts)
   -- vocabulary.
   for i=1,data:size(1) do
     if labels[i] == negativeLabel then
-      local newWord = torch.random(maxIndex)
-      local replacementIndex = torch.random(padding + 1, data:size(2) - padding)
-      data[i][replacementIndex] = newWord
+      local numToReplace = opts.noiseCount
+      if numToReplace == nil then
+        numToReplace = math.floor(lengths[i] * opts.noiseFraction)
+      end
+
+      local low = padding + 1
+      local high = data:size(2) - padding
+      local replacementIndices = sampleReplacementIndices(numToReplace, low, high)
+
+      for j=1,#replacementIndices do
+        local wordToReplace = replacementIndices[j]
+        local currentWord = data[i][wordToReplace]
+        local newWord = currentWord
+        while newWord == currentWord do
+          newWord = torch.random(maxIndex)
+          data[i][wordToReplace] = newWord
+        end
+      end
     end
   end
   return data, labels
