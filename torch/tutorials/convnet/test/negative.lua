@@ -95,6 +95,19 @@ testNoiseFractionPermutation = function()
   assert(verifyPaddingIsUnchanged(data, newData, 2))
 end
 
+testPositiveExamplesUnchangedPermutation = function()
+  local data = torch.Tensor({ { 0, 0, 1, 2, 3, 4, 5, 0, 0 } })
+  local labels = torch.Tensor({ 2 })
+  local lengths = torch.Tensor({ 5 })
+
+  local noiseCount = 2
+
+  local opts = { lengths=lengths, noiseFraction=noiseFraction }
+  local newData, _ = makePermutationNegativeExamples(data, labels, opts)
+
+  assert(verifyNumberOfElementsModified(data, newData, 0))
+end
+
 testNoiseCountReplacement = function()
   local data = torch.Tensor({ { 0, 0, 100, 200, 300, 400, 500, 0, 0 } })
   local labels = torch.Tensor({ 1 })
@@ -124,6 +137,18 @@ testNoiseFractionReplacement = function()
   assert(verifyPaddingIsUnchanged(data, newData, 2))
 end
 
+testPositiveExamplesUnchangedReplacement = function()
+  local data = torch.Tensor({ { 0, 0, 100, 200, 300, 400, 500, 0, 0 } })
+  local labels = torch.Tensor({ 1 })
+  local lengths = torch.Tensor({ 5 })
+
+  local noiseCount = 2
+
+  local opts = { lengths=lengths, noiseCount=noiseCount }
+  local newData, _ = makeReplacementNegativeExamples(data, labels, opts)
+
+  assert(verifyNumberOfElementsModified(data, newData, 0))
+end
 
 runTests = function()
   for i=1,200 do
