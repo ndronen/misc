@@ -32,19 +32,28 @@ makePermutationNegativeExamples = function(data, labels, opts)
   local opts = opts or {}
   local lengths = opts.lengths or error('lengths is required')
   local padding = opts.padding or 2
-  local permutationWindowSize = opts.permutationWindowSize or 3
+  local noiseWindowSize = opts.noiseWindowSize
+  local noiseWindowFraction = opts.noiseWindowFraction
   local negativeLabel = opts.negativeLabel or 1
+
+  if noiseWindowSize == nil and noiseWindowFraction == nil then
+    error("either noiseWindowSize or noiseWindowFraction is required in 'opts'")
+  end
 
   -- Find examples that have the negative class's label, place
   -- the permutation window randomly on the sentence, and permute
   -- the words in the window.
   for i=1,data:size(1) do
     if labels[i] == negativeLabel then
-      local maxWindowStartOffset = lengths[i] - permutationWindowSize + 1
+      local windowSize = opts.noiseWindowSize
+      if windowSize == nil then
+        windowSize = math.floor(lengths[i] * opts.noiseWindowFraction)
+      end
+      local maxWindowStartOffset = lengths[i] - windowSize + 1
       local windowStartIndex = padding + torch.random(maxWindowStartOffset) 
-      local values = data[i]:narrow(1, windowStartIndex, permutationWindowSize):clone()
-      local shuffledIndices = shuffleIndices(permutationWindowSize) + windowStartIndex - 1
-      for j=1,permutationWindowSize do
+      local values = data[i]:narrow(1, windowStartIndex, windowSize):clone()
+      local shuffledIndices = shuffleIndices(windowSize) + windowStartIndex - 1
+      for j=1,windowSize do
         data[i][shuffledIndices[j]] = values[j]
       end
     end
@@ -55,14 +64,14 @@ end
 
 --[[
 --]]
-makeCollobertAndWestonNegativeExamples = function(data, labels, opts)
+makeReplacementNegativeExamples = function(data, labels, opts)
   data = data:clone()
   labels = labels:clone()
 
   local opts = opts or {}
   local negativeLabel = opts.negativeLabel or 1
-  local maxIndex = opts.maxIndex or torch.max(data)
   local padding = opts.padding or 2
+  local maxIndex = opts.maxIndex or torch.max(data)
 
   -- Find examples that have the negative class's label and replace
   -- one word with a random word.  A word here is an index into the

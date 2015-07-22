@@ -45,8 +45,8 @@ cmd:option('-renormFreq', 0, 'number of updates after which to renorm weights')
 cmd:option('-spatial', false, 'train a spatial convolutional network')
 cmd:option('-minTrainSentLength', 0, 'minimum length of a sentence for training: (disabled=0)')
 cmd:option('-maxTrainSentLength', 0, 'maximum length of a sentence for training: (disabled=0)')
-cmd:option('-makeCollobertNegativeExamples', false, 'whether to make Collobert & Weston-style negative examples; when true, negative valdiation and test set examples are made ones and negative training set examples are made anew before each epoch')
-cmd:option('-makePermutationNegativeExamples', false, 'whether to make permutation-style negative examples; when true, negative valdiation and test set examples are made ones and negative training set examples are made anew before each epoch')
+cmd:option('-makeReplacementNegativeExamples', false, 'whether to make negative examples by randomly replacing words in a window; when true, negative valdiation and test set examples are made ones and negative training set examples are made anew before each epoch')
+cmd:option('-makePermutationNegativeExamples', false, 'whether to make negative examples by randomly permuting words in a window; when true, negative valdiation and test set examples are made ones and negative training set examples are made anew before each epoch')
 
 cmd:text()
 
@@ -103,12 +103,12 @@ local epoch = 1
 
 local negativeExampleMaker = nil
 
-if opt.makeCollobertNegativeExamples and opt.makePermutationNegativeExamples then
-  error('Collobert and permutation negative examples are mutually exclusive')
+if opt.makeReplacementNegativeExamples and opt.makePermutationNegativeExamples then
+  error('Replacement and permutation negative examples are mutually exclusive')
 end
 
-if opt.makeCollobertNegativeExamples then
-  negativeExampleMaker = makeCollobertAndWestonNegativeExamples
+if opt.makeReplacementNegativeExamples then
+  negativeExampleMaker = makeReplacementAndWestonNegativeExamples
 elseif opt.makePermutationNegativeExamples then
   negativeExampleMaker = makePermutationNegativeExamples
 end
