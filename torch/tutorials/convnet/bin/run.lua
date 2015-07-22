@@ -45,9 +45,10 @@ cmd:option('-renormFreq', 0, 'number of updates after which to renorm weights')
 cmd:option('-spatial', false, 'train a spatial convolutional network')
 cmd:option('-minTrainSentLength', 0, 'minimum length of a sentence for training: (disabled=0)')
 cmd:option('-maxTrainSentLength', 0, 'maximum length of a sentence for training: (disabled=0)')
-cmd:option('-makeReplacementNegativeExamples', false, 'whether to make negative examples by randomly replacing words in a window; when true, negative valdiation and test set examples are made ones and negative training set examples are made anew before each epoch')
+cmd:option('-makeReplacementNegativeExamples', false, 'whether to make negative examples by randomly replacing words; when true, negative valdiation and test set examples are made ones and negative training set examples are made anew before each epoch')
 cmd:option('-makePermutationNegativeExamples', false, 'whether to make negative examples by randomly permuting words in a window; when true, negative valdiation and test set examples are made ones and negative training set examples are made anew before each epoch')
-
+cmd:option('-noiseCount', 0, 'when creating negative examples, the number of words in a sentence that should be affected')
+cmd:option('-noiseFraction', 0.0, 'when creating negative examples, the fraction of words in a sentence that should be affected')
 cmd:text()
 
 local opt = cmd:parse(arg or {})
@@ -59,6 +60,7 @@ require 'convnet.loss'
 require 'convnet.optim'
 require 'convnet.train'
 require 'convnet.test'
+
 
 if opt.type == 'float' then
   require 'nn'
@@ -107,22 +109,40 @@ if opt.makeReplacementNegativeExamples and opt.makePermutationNegativeExamples t
   error('Replacement and permutation negative examples are mutually exclusive')
 end
 
+if opt.makeReplacementNegativeExamples or opt.makePermutationNegativeExamples then
+  if opt.noiseCount <= 0 and opt.noiseFraction <= 0 then
+    error('noiseCount or noiseFraction are required when creating negative examples')
+  end
+end
+
+
 if opt.makeReplacementNegativeExamples then
   negativeExampleMaker = makeReplacementAndWestonNegativeExamples
 elseif opt.makePermutationNegativeExamples then
   negativeExampleMaker = makePermutationNegativeExamples
 end
 
+
 if negativeExampleMaker then
   if validData ~= nil then
+    local opts = {
+      lengths=validData.len,
+      noiseCount=opt.noiseCount,
+      noiseFraction=opt.noiseFraction
+    }
     local data, labels = negativeExampleMaker(
-        validData.data, validData.labels, { lengths=validData.len })
+        validData.data, validData.labels, opts)
     validData.data = data
     validData.labels = labels
   end
   if testData ~= nil then
+    local opts = {
+      lengths=testData.len,
+      noiseCount=opt.noiseCount,
+      noiseFraction=opt.noiseFraction
+    }
     local data, labels = negativeExampleMaker(
-        testData.data, testData.labels, { lengths=testData.len })
+        testData.data, testData.labels, opts)
     testData.data = data
     testData.labels = labels
   end
@@ -136,8 +156,13 @@ while true do
   }
 
   if negativeExampleMaker then
+    local opts = { 
+      lengths=trainData.len,
+      noiseCount=opt.noiseCount,
+      noiseFraction=opt.noiseFraction
+    }
     local data, labels = negativeExampleMaker(
-        trainData.data, trainData.labels, { lengths=trainData.len })
+        trainData.data, trainData.labels, opts)
     trainDataForEpoch.data = data
     trainDataForEpoch.labels = labels
   end
