@@ -4,10 +4,17 @@ local fbcunn =  require 'fbcunn';
 local kttorch = require 'kttorch';
 
 function mergeTables(t1, t2)
-  for k,v in pairs(t2) do
-    t1[k] = v
+  local t = {}
+
+  for k,v in pairs(t1) do
+    t[k] = v
   end
-  return t1
+
+  for k,v in pairs(t2) do
+    t[k] = v
+  end
+
+  return t
 end
 
 function fileExists(name)
@@ -50,13 +57,18 @@ function replaceDigits(s)
 end
 
 function separateWordsAndPunctuation(s)
-  return string.gsub(s, "(['.,:;?!\"])", " %1 ")
+  return string.gsub(s, "([()'.,:;?!\"])", " %1 ")
+end
+
+function joinApostropheTAndS(s)
+  return string.gsub(s, "' ([st]) ", "'%1 ")
 end
 
 function tokenize(s)
   local toks = {}
   local s = replaceDigits(s)
   s = separateWordsAndPunctuation(s)
+  s = joinApostropheTAndS(s)
 
   for tok in string.gmatch(s, "%S+") do
     table.insert(toks, tok)
