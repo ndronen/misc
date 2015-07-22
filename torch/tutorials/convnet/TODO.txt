@@ -22,16 +22,11 @@
        ones is the correct procedure for performing a sensitivity analysis. 
        This question is out of the scope of the current study.)
 
-* Given a sentence, a model, and a vector identifying the model's positive
-  and negative filters, output the model's prediction, its softmax output,
-  and -- for each position in a sentence -- both the number of positive
-  or negative filters it triggered and its contribution to a positive
-  or negative prediction (i.e. turn foo.lua into a set of functions
-  in convnet/*).
-
 * Write a suite of scripts for scoring the sentences of an essay.
   The input is a file containing an essay.  The output is, for each
-  sentence, the probability that it is mostly well formed.
+  sentence, the probability that it is mostly well formed.  Sentence
+  segmentation should be performed using our in-house Perl splitter,
+  which is quite robust.
 
 * Implement a builder that takes a trained temporal convolutional model
   and builds a model that has weight updates disabled for all layers
@@ -216,3 +211,10 @@
   and bin/run.lua.  Find and fix.
 
 * Implement convnet.inspection.sumMagnitudeOfActivations.
+
+* Given a sentence, a model, and a vector identifying the model's positive
+  and negative filters, output the model's prediction, its softmax output,
+  and -- for each position in a sentence -- both the number of positive
+  or negative filters it triggered and its contribution to a positive
+  or negative prediction (i.e. turn foo.lua into a set of functions
+  in convnet/*).
