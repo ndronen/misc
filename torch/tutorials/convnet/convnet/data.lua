@@ -46,7 +46,7 @@ makePermutationNegativeExamples = function(data, labels, opts)
     if labels[i] == negativeLabel then
       local windowSize = opts.noiseCount
       if windowSize == 0 then
-        windowSize = math.floor(lengths[i] * opts.noiseFraction)
+        windowSize = math.ceil(lengths[i] * opts.noiseFraction)
       end
       local maxWindowStartOffset = lengths[i] - windowSize + 1
       local windowStartIndex = padding + torch.random(maxWindowStartOffset) 
@@ -121,7 +121,7 @@ makeReplacementNegativeExamples = function(data, labels, opts)
     if labels[i] == negativeLabel then
       local numToReplace = opts.noiseCount
       if numToReplace == 0 then
-        numToReplace = math.floor(lengths[i] * opts.noiseFraction)
+        numToReplace = math.ceil(lengths[i] * opts.noiseFraction)
       end
 
       local low = padding + 1
