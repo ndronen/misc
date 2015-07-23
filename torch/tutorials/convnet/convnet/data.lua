@@ -7,6 +7,11 @@ By default, require all indices in a permutation to be other than the original s
 shuffleIndices = function(size, opts) 
   local opts = opts or { requireFullShuffle=true }
   local indices = nil
+
+  if size == 1 then
+    return torch.Tensor({ size })
+  end
+
   while true do
     indices = torch.randperm(size)
     if not opts.requireFullShuffle then
