@@ -35,7 +35,7 @@ makePermutationNegativeExamples = function(data, labels, opts)
   local padding = opts.padding or 2
   local lengths = opts.lengths or error('lengths is required')
 
-  if opts.noiseCount == nil and opts.noiseFraction == nil then
+  if opts.noiseCount <= 0 and opts.noiseFraction <= 0.0 then
     error("either noiseCount or noiseFraction is required in 'opts'")
   end
 
@@ -45,7 +45,7 @@ makePermutationNegativeExamples = function(data, labels, opts)
   for i=1,data:size(1) do
     if labels[i] == negativeLabel then
       local windowSize = opts.noiseCount
-      if windowSize == nil then
+      if windowSize == 0 then
         windowSize = math.floor(lengths[i] * opts.noiseFraction)
       end
       local maxWindowStartOffset = lengths[i] - windowSize + 1
@@ -108,7 +108,7 @@ makeReplacementNegativeExamples = function(data, labels, opts)
   local padding = opts.padding or 2
   local lengths = opts.lengths or error('lengths is required')
 
-  if opts.noiseCount == nil and opts.noiseFraction == nil then
+  if opts.noiseCount <= 0 and opts.noiseFraction <= 0.0 then
     error("either noiseCount or noiseFraction is required in 'opts'")
   end
 
@@ -120,7 +120,7 @@ makeReplacementNegativeExamples = function(data, labels, opts)
   for i=1,data:size(1) do
     if labels[i] == negativeLabel then
       local numToReplace = opts.noiseCount
-      if numToReplace == nil then
+      if numToReplace == 0 then
         numToReplace = math.floor(lengths[i] * opts.noiseFraction)
       end
 
