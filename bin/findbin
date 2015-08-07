@@ -1,0 +1,5 @@
+#!/bin/sh
+
+BIN="$(dirname $(readlink -f -- "$0"))"
+
+echo $BIN
