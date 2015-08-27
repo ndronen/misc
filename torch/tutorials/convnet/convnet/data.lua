@@ -187,7 +187,7 @@ to try to place extremely short positive and negative examples near one
 another and to place extremely long positive and negative examples far
 from one another.
 --]]
-scaleRegressionTargets = function(dataset, zeroVectorIndex, padding)
+scaleRegressionTargets = function(dataset, zeroVectorIndex, padding, scaleMseTarget)
   numZero = countZeroesInSentence(dataset.X, zeroVectorIndex, padding)
   numZero = numZero:reshape(numZero:nElement())
   numZero[torch.lt(numZero, 1)] = 1
@@ -209,8 +209,15 @@ scaleRegressionTargets = function(dataset, zeroVectorIndex, padding)
   regTargets = regTargets + maxLength
 
   -- Rescale.
-  regTargets = torch.round((regTargets:float()/opt.scaleMseTarget))+1
+  regTargets = torch.round((regTargets:float()/scaleMseTarget))+1
   return regTargets
+end
+
+adjustTargetToOneBasedIndexing = function(target)
+  if torch.min(target) == 0 then
+    target = target + 1
+  end
+  return target
 end
 
 loadData = function(opt) 
@@ -231,11 +238,16 @@ loadData = function(opt)
     testHdfFile = hdf5.open(opt.testFile, 'r')
     testHdfData = testHdfFile:read():all()
   end
+
+  trainHdfData.y = adjustTargetToOneBasedIndexing(trainHdfData.y)
+  if opt.test then
+    testHdfData.y = adjustTargetToOneBasedIndexing(testHdfData.y)
+  end
   
   -- Optionally scale the target variable if the loss is mean squared error.
-  if (opt.loss == 'mse') and (opt.scaleMseTarget) then
+  if (opt.loss == 'mse') and (opt.scaleMseTarget > 0) then
     trainHdfData.y = scaleRegressionTargets(
-        trainHdfData, opt.zeroVector, opt.padding)
+        trainHdfData, opt.zeroVector, opt.padding, opt.scaleMseTarget)
     if opt.test then
       testHdfData.y = scaleRegressionTargets(
           testHdfData, opt.zeroVector, opt.padding)
