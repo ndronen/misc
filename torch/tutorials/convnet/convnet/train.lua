@@ -12,7 +12,7 @@ function train(model, trainData, args)
   local normsLogger = args.normsLogger
   -- TODO: create a dataset iterator.
   local batchSize = args.batchSize
-  local dataType = args.type
+  local dataType = args.dataType
   local loss = args.loss
   local spatial = args.spatial
   -- TODO: change train to return predictions, so the caller can determine
@@ -20,6 +20,7 @@ function train(model, trainData, args)
   -- logging the confusion matrix without the train loop having to know.
   local save = args.save
   local confusion = args.confusion
+  local maxClass = confusion.nclasses
   -- TODO: move the responsibility for determining when to renorm to
   -- the renormers themselves.
   local renormFreq = args.renormFreq
@@ -122,8 +123,8 @@ function train(model, trainData, args)
         model:backward(input, df_do)
 
         if loss == 'mse' then
-          if output[1] > max_class then
-            output[1] = max_class
+          if output[1] > maxClass then
+            output[1] = maxClass
           elseif output[1] < 1 then
             output[1] = 1
           end
