@@ -117,7 +117,7 @@ end
 
 
 if opt.makeReplacementNegativeExamples then
-  negativeExampleMaker = makeReplacementAndWestonNegativeExamples
+  negativeExampleMaker = makeReplacementNegativeExamples
 elseif opt.makePermutationNegativeExamples then
   negativeExampleMaker = makePermutationNegativeExamples
 end
