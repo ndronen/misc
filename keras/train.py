@@ -21,20 +21,36 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping
 sys.path.append('.')
 
 class ClassificationReport(keras.callbacks.Callback):
-    def __init__(self, x, y, logger, msg='', labels=None):
+    def __init__(self, x, y, target_names, logger, msg='', error_classes_only=True):
         self.x = x
         self.y = y
         self.logger = logger
         self.msg = msg
+
+        if error_classes_only:
+            labels, target_names = self.error_classes(target_names)
+        else:
+            labels = np.arange(len(target_names))
+
         self.labels = labels
+        self.target_names = target_names
 
     def on_epoch_end(self, batch, logs={}):
         y_hat = self.model.predict_classes(self.x, verbose=0)
         report = classification_report(
-                self.y, y_hat, target_names=self.labels)
+                self.y, y_hat,
+                labels=self.labels, target_names=self.target_names)
         if self.msg and len(self.msg):
             self.logger(self.msg)
         self.logger(report)
+
+    def error_classes(self, target_names):
+        # Assumes actual labels (numeric codes) start at 0 and are
+        # contiguous.
+        labels = np.arange(len(target_names))
+        pairs = [pair.split('-') for pair in target_names]
+        mask = np.array([pair[0] != pair[1] for pair in pairs])
+        return labels[mask], target_names[mask]
 
 class ConfusionMatrix(keras.callbacks.Callback):
     def __init__(self, x, y, logger, msg=''):
@@ -95,13 +111,13 @@ def get_parser():
             help='HDF5 file of training examples.')
     parser.add_argument('validation_file', metavar='VALIDATION_FILE', type=str,
             help='HDF5 file of validation examples.')
-    parser.add_argument('target_name', metavar='TARGET_NAME', type=str,
+    parser.add_argument('target', metavar='TARGET_NAME', type=str,
             help='Name of the target variable in input HDF5 file.')
 
     parser.add_argument('--model-dest', type=str,
             help='Directory to which to copy model.py and model.json.  This overrides copying to model_dir/UUID.')
-    parser.add_argument('--labels', type=str,
-            help='Pickled dictionary of labels from sklearn.preprocessing.LabelEncoder.  For labels to be used, the dictionary must contain a key `TARGET_NAME`')
+    parser.add_argument('--target-names', type=str,
+            help='Pickled dictionary of target names from sklearn.preprocessing.LabelEncoder.  The dictionary must contain a key `TARGET_NAME`')
     parser.add_argument('--description', type=str,
             help='Short description of this model (data, hyperparameters, etc.)')
     parser.add_argument('--seed', default=1, type=int,
@@ -142,7 +158,7 @@ def main(args):
 
     train_file = h5py.File(args.train_file)
     x_train = train_file['X'].value.astype(np.int32)
-    y_train = train_file[args.target_name].value.astype(np.int32)
+    y_train = train_file[args.target].value.astype(np.int32)
 
     if len(y_train) > args.n_train:
         y_train = y_train[0:args.n_train]
@@ -150,7 +166,7 @@ def main(args):
 
     validation_file = h5py.File(args.validation_file)
     x_validation = validation_file['X'].value.astype(np.int32)
-    y_validation = validation_file[args.target_name].value.astype(np.int32)
+    y_validation = validation_file[args.target].value.astype(np.int32)
 
     if len(y_validation) > args.n_validation:
         y_validation = y_validation[0:args.n_validation]
@@ -158,11 +174,11 @@ def main(args):
     
     np.random.seed(args.seed)
 
-    labels = None
-    if args.labels:
-        label_dict = cPickle.load(open(args.labels))
-        labels = label_dict[args.target_name]
-        n_classes = len(labels)
+    target_names = None
+    if args.target_names:
+        target_names_dict = cPickle.load(open(args.target_names))
+        target_names = target_names_dict[args.target]
+        n_classes = len(target_names)
     else:
         n_classes = len(np.unique(y_train))
 
@@ -222,8 +238,8 @@ def main(args):
     callback_logger = logging.info if args.log else fake_print
 
     cr = ClassificationReport(x_validation, y_validation,
-            callback_logger, msg='Validation set metrics',
-            labels=labels)
+            target_names, callback_logger,
+            msg='Validation set metrics')
     callbacks.append(cr)
 
     model.fit(x_train, y_train_one_hot,
