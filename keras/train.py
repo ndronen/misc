@@ -5,6 +5,7 @@ import argparse
 import logging
 import json
 import uuid
+import cPickle
 
 import numpy as np
 import h5py
@@ -30,23 +31,22 @@ class ClassificationReport(keras.callbacks.Callback):
     def on_epoch_end(self, batch, logs={}):
         y_hat = self.model.predict_classes(self.x, verbose=0)
         report = classification_report(
-                self.y, y_hat, labels=self.labels)
+                self.y, y_hat, target_names=self.labels)
         if self.msg and len(self.msg):
             self.logger(self.msg)
         self.logger(report)
 
 class ConfusionMatrix(keras.callbacks.Callback):
-    def __init__(self, x, y, logger, msg='', labels=None):
+    def __init__(self, x, y, logger, msg=''):
         self.x = x
         self.y = y
         self.logger = logger
         self.msg = msg
-        self.labels = labels
 
     def on_epoch_end(self, batch, logs={}):
         y_hat = self.model.predict_classes(self.x, verbose=0)
         report = confusion_matrix(
-                self.y, y_hat, labels=self.labels)
+                self.y, y_hat)
         if self.msg and len(self.msg):
             self.logger(self.msg)
         self.logger(report)
@@ -158,7 +158,14 @@ def main(args):
     
     np.random.seed(args.seed)
 
-    n_classes = len(np.unique(y_train))
+    labels = None
+    if args.labels:
+        label_dict = cPickle.load(open(args.labels))
+        labels = label_dict[args.target_name]
+        n_classes = len(labels)
+    else:
+        n_classes = len(np.unique(y_train))
+
     logging.debug("n_classes {0} min {1} max {2}".format(
         n_classes, min(y_train), max(y_train)))
 
@@ -193,11 +200,6 @@ def main(args):
 
     callbacks = []
 
-    labels = None
-    if args.labels:
-        label_dict = cPickle.load(open(args.labels))
-        labels = label_dict[args.target_name]
-
     if not args.no_save:
         if args.description:
             with open(model_path + '/README.txt', 'w') as f:
@@ -219,16 +221,10 @@ def main(args):
 
     callback_logger = logging.info if args.log else fake_print
 
-    #def __init__(self, x, y, logger, msg='', labels=None):
     cr = ClassificationReport(x_validation, y_validation,
             callback_logger, msg='Validation set metrics',
             labels=labels)
     callbacks.append(cr)
-
-    cm = ConfusionMatrix(x_validation, y_validation,
-            callback_logger, msg='Validation set confusion matrix',
-            labels=labels)
-    callbacks.append(cm)
 
     model.fit(x_train, y_train_one_hot,
         shuffle=False,
