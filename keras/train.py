@@ -21,16 +21,19 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping
 sys.path.append('.')
 
 class ClassificationReport(keras.callbacks.Callback):
-    def __init__(self, x, y, target_names, logger, msg='', error_classes_only=True):
+    def __init__(self, x, y, logger, target_names=None, msg='', error_classes_only=True):
         self.x = x
         self.y = y
         self.logger = logger
         self.msg = msg
 
-        if error_classes_only:
-            labels, target_names = self.error_classes(target_names)
+        if target_names is not None:
+            if error_classes_only:
+                labels, target_names = self.error_classes(target_names)
+            else:
+                labels = np.arange(len(target_names))
         else:
-            labels = np.arange(len(target_names))
+            labels = None
 
         self.labels = labels
         self.target_names = target_names
@@ -205,7 +208,7 @@ def main(args):
     else:
         target_names = None
         class_weight = None
-        n_classes = len(np.unique(y_train))
+        n_classes = max(y_train)+1
 
     logging.debug("n_classes {0} min {1} max {2}".format(
         n_classes, min(y_train), max(y_train)))
@@ -264,8 +267,9 @@ def main(args):
 
     if args.classification_report:
         cr = ClassificationReport(x_validation, y_validation,
-                target_names, callback_logger,
+                callback_logger,
                 msg='Validation set metrics',
+                target_names=target_names,
                 error_classes_only=args.error_classes_only)
         callbacks.append(cr)
 
