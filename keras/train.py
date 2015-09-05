@@ -132,6 +132,8 @@ def get_parser():
             help='Whether to send console output to log file')
     parser.add_argument('--no-save', action='store_true',
             help='Disable saving/copying of model.py and model.json to a unique directory for reproducibility')
+    parser.add_argument('--classification-report', action='store_true',
+            help='Include an sklearn classification report on the validation set at end of each epoch')
     
     return parser.parse_args()
 
@@ -237,10 +239,11 @@ def main(args):
 
     callback_logger = logging.info if args.log else fake_print
 
-    cr = ClassificationReport(x_validation, y_validation,
-            target_names, callback_logger,
-            msg='Validation set metrics')
-    callbacks.append(cr)
+    if args.classification_report:
+        cr = ClassificationReport(x_validation, y_validation,
+                target_names, callback_logger,
+                msg='Validation set metrics')
+        callbacks.append(cr)
 
     model.fit(x_train, y_train_one_hot,
         shuffle=False,
