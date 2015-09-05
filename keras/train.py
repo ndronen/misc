@@ -116,8 +116,8 @@ def get_parser():
 
     parser.add_argument('--model-dest', type=str,
             help='Directory to which to copy model.py and model.json.  This overrides copying to model_dir/UUID.')
-    parser.add_argument('--target-names', type=str,
-            help='Pickled dictionary of target names from sklearn.preprocessing.LabelEncoder.  The dictionary must contain a key `TARGET_NAME`')
+    parser.add_argument('--target-data', type=str,
+            help='Pickled dictionary of target data from sklearn.preprocessing.LabelEncoder.  The dictionary must contain a key `TARGET_NAME` that maps either to a list of target names or a dictionary mapping target names to their class weights (useful for imbalanced data sets')
     parser.add_argument('--description', type=str,
             help='Short description of this model (data, hyperparameters, etc.)')
     parser.add_argument('--seed', default=1, type=int,
@@ -134,7 +134,9 @@ def get_parser():
             help='Disable saving/copying of model.py and model.json to a unique directory for reproducibility')
     parser.add_argument('--classification-report', action='store_true',
             help='Include an sklearn classification report on the validation set at end of each epoch')
-    
+    parser.add_argument('--error-classes-only', action='store_true',
+            help='Only report on error classes in classification report')
+
     return parser.parse_args()
 
 def main(args):
@@ -176,12 +178,33 @@ def main(args):
     
     np.random.seed(args.seed)
 
-    target_names = None
-    if args.target_names:
-        target_names_dict = cPickle.load(open(args.target_names))
-        target_names = target_names_dict[args.target]
+    if args.target_data:
+        target_names_dict = cPickle.load(open(args.target_data))
+
+        try:
+            target_data = target_names_dict[args.target]
+        except KeyError:
+            raise ValueError("Invalid key " + args.target +
+                    " for dictionary in " + args.target_data)
+
+        if isinstance(target_data, dict):
+            try:
+                target_names = target_data['names']
+                class_weight = target_data['weights']
+            except KeyError, e:
+                raise ValueError("Target data dictionary from " +
+                        args.target_data + "is missing a key: " + str(e))
+        elif isinstance(target_data, list):
+            target_names = target_data
+            class_weight = None
+        else:
+            raise ValueError("Target data must be list or dict, not " +
+                    str(type(target_data)))
+
         n_classes = len(target_names)
     else:
+        target_names = None
+        class_weight = None
         n_classes = len(np.unique(y_train))
 
     logging.debug("n_classes {0} min {1} max {2}".format(
@@ -242,7 +265,8 @@ def main(args):
     if args.classification_report:
         cr = ClassificationReport(x_validation, y_validation,
                 target_names, callback_logger,
-                msg='Validation set metrics')
+                msg='Validation set metrics',
+                error_classes_only=args.error_classes_only)
         callbacks.append(cr)
 
     model.fit(x_train, y_train_one_hot,
@@ -251,6 +275,7 @@ def main(args):
         show_accuracy=True,
         validation_data=(x_validation, y_validation_one_hot),
         callbacks=callbacks,
+        class_weight=class_weight,
         verbose=2 if args.log else 1)
 
 if __name__ == '__main__':
