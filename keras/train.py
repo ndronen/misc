@@ -12,7 +12,7 @@ import numpy as np
 import theano
 import h5py
 import six
-from sklearn.metrics import classification_report, f1_score
+from sklearn.metrics import classification_report, fbeta_score
 
 from keras.utils import np_utils
 from keras.optimizers import SGD
@@ -322,6 +322,8 @@ def main(args):
                     show_accuracy=True,
                     verbose=0 if args.log else 1)
 
+            logging.info("epoch {0} - val_loss: {1} - val_acc: {2}".format(
+                    epoch, val_loss, val_accuracy))
             epoch_end_logs = {'val_loss': val_loss, 'val_accuracy': val_accuracy}
             callbacks.on_epoch_end(epoch, epoch_end_logs)
 
