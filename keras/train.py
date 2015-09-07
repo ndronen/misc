@@ -18,6 +18,7 @@ from keras.utils import np_utils
 from keras.optimizers import SGD
 import keras.callbacks
 from keras.callbacks import ModelCheckpoint, EarlyStopping
+import keras.models
 #from nick.callbacks import SklearnMetricCheckpoint
 
 sys.path.append('.')
@@ -178,10 +179,14 @@ def main(args):
             args.validation_file, args.target)
 
     if len(y_train) > args.n_train:
+        logging.info("Reducing training set size from " +
+                str(len(y_train)) + " to " + str(args.n_train))
         y_train = y_train[0:args.n_train]
         x_train = x_train[0:args.n_train, :]
 
     if len(y_validation) > args.n_validation:
+        logging.info("Reducing validation set size from " +
+                str(len(y_validation)) + " to " + str(args.n_validation))
         y_validation = y_validation[0:args.n_validation]
         x_validation = x_validation[0:args.n_validation, :]
     
@@ -247,7 +252,7 @@ def main(args):
     json_cfg['input_width'] = x_train.shape[1]
     json_cfg['n_classes'] = n_classes
 
-    logging.debug("loading model ...")
+    logging.debug("loading model")
 
     sys.path.append(args.model_dir)
     from model import build_model
@@ -285,36 +290,64 @@ def main(args):
                 error_classes_only=args.error_classes_only)
         callbacks.append(cr)
 
+    callbacks._set_model(model)
+
     if args.extra_train_file is not None:
         args.extra_train_file.append(args.train_file)
-        logging.debug("Using the following files for training: " +
-                str(args.extra_train_file))
-        train_file_iter = cycle(args.extra_train_file)
+        logging.info("Using the following files for training: " +
+                ','.join(args.extra_train_file))
+
+        train_file_iter = itertools.cycle(args.extra_train_file)
+        current_train = args.train_file
         epoch = batch = 0
         callbacks.on_train_begin(logs={})
         while True:
+            logging.info("epoch {0} - training with {1}".format(
+                    epoch, current_train))
             callbacks.on_epoch_begin(epoch, logs={})
+
             callbacks.on_batch_begin(batch,
                     logs={'size': x_train.shape[0]})
 
-            train_loss, train_accuracy = model.train_on_batch(
-                    x_train, y_train_one_hot,
-                    accuracy=True, class_weight=class_weight)
+            batches = keras.models.make_batches(x_train.shape[0], model_cfg.batch_size)
+            logging.debug("epoch {0} - starting {1} batches".format(
+                    epoch, len(batches)))
 
-            val_loss, val_accuracy = model.test_on_batch(
-                    x_validation, y_validation_one_hot,
-                    accuracy=True)
+            avg_train_loss = avg_train_accuracy = 0.
+            for batch_index, (batch_start, batch_end) in enumerate(batches):
+                train_loss, train_accuracy = model.train_on_batch(
+                        x_train[batch_start:batch_end],
+                        y_train_one_hot[batch_start:batch_end],
+                        accuracy=True, class_weight=class_weight)
 
-            callbacks.on_batch_end(batch,
-                    logs={'loss': train_loss, 'accuracy': train_accuracy})
-            callbacks.on_epoch_end(epoch,
-                    logs={'val_loss': val_loss, 'val_accuracy': val_accuracy})
+                batch_end_logs = {'loss': train_loss, 'accuracy': train_accuracy}
+
+                avg_train_loss = (avg_train_loss * batch_index + train_loss)/(batch_index + 1)
+                avg_train_accuracy = (avg_train_accuracy * batch_index + train_accuracy)/(batch_index + 1)
+
+                callbacks.on_batch_end(batch,
+                        logs={'loss': train_loss, 'accuracy': train_accuracy})
+
+            logging.debug("epoch {0} - finished {1} batches".format(
+                    epoch, len(batches)))
+            logging.debug("epoch {0} - loss - {1} - accuracy {2}".format(
+                    epoch, avg_train_loss, avg_train_accuracy))
+
+            val_loss, val_accuracy = model.evaluate(x_validation,
+                    y_validation_one_hot, show_accuracy=True,
+                    verbose=2 if args.log else 1)
+
+            epoch_end_logs = {'val_loss': val_loss, 'val_accuracy': val_accuracy}
+            logging.info("epoch {0} - val_loss {1} - val_accuracy {2}".format(
+                    epoch, val_loss, val_accuracy))
+            callbacks.on_epoch_end(epoch, epoch_end_logs)
 
             if model.stop_training:
+                logging.info("epoch {0} - done training".format(epoch))
                 break
 
-            next_train = next(train_file_iter)
-            x_train, y_train = load_data(next_train, args.target)
+            current_train = next(train_file_iter)
+            x_train, y_train = load_data(current_train, args.target)
             y_train_one_hot = np_utils.to_categorical(y_train, n_classes)
 
             epoch += 1
