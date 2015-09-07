@@ -255,6 +255,8 @@ def main(args):
             shutil.copyfile(args.model_dir + '/' + model_file,
                     model_path + '/' + model_file)
 
+        json.dump(args, open(model_path + '/args.json', 'w'))
+
         # And weights.
         callbacks.append(ModelCheckpoint(
             filepath=model_path + '/model.h5',
