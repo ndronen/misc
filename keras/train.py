@@ -328,14 +328,14 @@ def main(args):
                 callbacks.on_batch_end(batch,
                         logs={'loss': train_loss, 'accuracy': train_accuracy})
 
-            logging.debug("epoch {0} - finished {1} batches".format(
+            logging.info("epoch {0} - finished {1} batches".format(
                     epoch, len(batches)))
 
             val_loss, val_accuracy = model.evaluate(x_validation,
                     y_validation_one_hot, show_accuracy=True,
                     verbose=2 if args.log else 1)
 
-            logging.debug("epoch {0} - loss: {1} - acc: {2} - val_loss: {3} - val_acc: {4}".format(
+            logging.info("epoch {0} - loss: {1} - acc: {2} - val_loss: {3} - val_acc: {4}".format(
                     epoch, avg_train_loss, avg_train_accuracy, val_loss, val_accuracy))
 
             epoch_end_logs = {'val_loss': val_loss, 'val_accuracy': val_accuracy}
