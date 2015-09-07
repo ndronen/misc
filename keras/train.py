@@ -310,7 +310,7 @@ def main(args):
                     logs={'size': x_train.shape[0]})
 
             batches = keras.models.make_batches(x_train.shape[0], model_cfg.batch_size)
-            logging.debug("epoch {0} - starting {1} batches".format(
+            logging.info("epoch {0} - starting {1} batches".format(
                     epoch, len(batches)))
 
             avg_train_loss = avg_train_accuracy = 0.
@@ -330,16 +330,15 @@ def main(args):
 
             logging.debug("epoch {0} - finished {1} batches".format(
                     epoch, len(batches)))
-            logging.debug("epoch {0} - loss - {1} - accuracy {2}".format(
-                    epoch, avg_train_loss, avg_train_accuracy))
 
             val_loss, val_accuracy = model.evaluate(x_validation,
                     y_validation_one_hot, show_accuracy=True,
                     verbose=2 if args.log else 1)
 
+            logging.debug("epoch {0} - loss: {1} - acc: {2} - val_loss: {3} - val_acc: {4}".format(
+                    epoch, avg_train_loss, avg_train_accuracy, val_loss, val_accuracy))
+
             epoch_end_logs = {'val_loss': val_loss, 'val_accuracy': val_accuracy}
-            logging.info("epoch {0} - val_loss {1} - val_accuracy {2}".format(
-                    epoch, val_loss, val_accuracy))
             callbacks.on_epoch_end(epoch, epoch_end_logs)
 
             if model.stop_training:
