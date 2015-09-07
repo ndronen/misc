@@ -5,9 +5,11 @@ import argparse
 import logging
 import json
 import uuid
-import cPickle
+import json
+import itertools 
 
 import numpy as np
+import theano
 import h5py
 import six
 from sklearn.metrics import classification_report, confusion_matrix, f1_score
@@ -101,6 +103,12 @@ class LoggerWriter:
 def fake_print(s):
     print(s)
 
+def load_data(path, y_name, X_name='X'):
+    data = h5py.File(path)
+    x_data = data[X_name].value.astype(np.int32)
+    y_data = data[y_name].value.astype(np.int32)
+    return x_data, y_data
+
 """
 Train a model on sentences.
 """
@@ -117,6 +125,8 @@ def get_parser():
     parser.add_argument('target', metavar='TARGET_NAME', type=str,
             help='Name of the target variable in input HDF5 file.')
 
+    parser.add_argument('--extra-train-file', type=str, nargs='+',
+            help='path to one or more extra train files, useful for when training set is too big to fit into memory.')
     parser.add_argument('--model-dest', type=str,
             help='Directory to which to copy model.py and model.json.  This overrides copying to model_dir/UUID.')
     parser.add_argument('--target-data', type=str,
@@ -163,17 +173,13 @@ def main(args):
     else:
         logging.basicConfig(level=logging.DEBUG)
 
-    train_file = h5py.File(args.train_file)
-    x_train = train_file['X'].value.astype(np.int32)
-    y_train = train_file[args.target].value.astype(np.int32)
+    x_train, y_train = load_data(args.train_file, args.target)
+    x_validation, y_validation = load_data(
+            args.validation_file, args.target)
 
     if len(y_train) > args.n_train:
         y_train = y_train[0:args.n_train]
         x_train = x_train[0:args.n_train, :]
-
-    validation_file = h5py.File(args.validation_file)
-    x_validation = validation_file['X'].value.astype(np.int32)
-    y_validation = validation_file[args.target].value.astype(np.int32)
 
     if len(y_validation) > args.n_validation:
         y_validation = y_validation[0:args.n_validation]
@@ -182,7 +188,7 @@ def main(args):
     np.random.seed(args.seed)
 
     if args.target_data:
-        target_names_dict = cPickle.load(open(args.target_data))
+        target_names_dict = json.load(open(args.target_data))
 
         try:
             target_data = target_names_dict[args.target]
@@ -209,6 +215,12 @@ def main(args):
         target_names = None
         class_weight = None
         n_classes = max(y_train)+1
+
+    if class_weight is not None:
+        # Keys are strings in JSON; convert them to int.
+        for k,v in class_weight.iteritems():
+            del class_weight[k]
+            class_weight[int(k)] = v
 
     logging.debug("n_classes {0} min {1} max {2}".format(
         n_classes, min(y_train), max(y_train)))
@@ -242,7 +254,7 @@ def main(args):
     model_cfg = ModelConfig(**json_cfg)
     model = build_model(model_cfg)
 
-    callbacks = []
+    callbacks = keras.callbacks.CallbackList()
 
     if not args.no_save:
         if args.description:
@@ -273,14 +285,51 @@ def main(args):
                 error_classes_only=args.error_classes_only)
         callbacks.append(cr)
 
-    model.fit(x_train, y_train_one_hot,
-        shuffle=False,
-        batch_size=model_cfg.batch_size,
-        show_accuracy=True,
-        validation_data=(x_validation, y_validation_one_hot),
-        callbacks=callbacks,
-        class_weight=class_weight,
-        verbose=2 if args.log else 1)
+    if args.extra_train_file is not None:
+        args.extra_train_file.append(args.train_file)
+        logging.debug("Using the following files for training: " +
+                str(args.extra_train_file))
+        train_file_iter = cycle(args.extra_train_file)
+        epoch = batch = 0
+        callbacks.on_train_begin(logs={})
+        while True:
+            callbacks.on_epoch_begin(epoch, logs={})
+            callbacks.on_batch_begin(batch,
+                    logs={'size': x_train.shape[0]})
+
+            train_loss, train_accuracy = model.train_on_batch(
+                    x_train, y_train_one_hot,
+                    accuracy=True, class_weight=class_weight)
+
+            val_loss, val_accuracy = model.test_on_batch(
+                    x_validation, y_validation_one_hot,
+                    accuracy=True)
+
+            callbacks.on_batch_end(batch,
+                    logs={'loss': train_loss, 'accuracy': train_accuracy})
+            callbacks.on_epoch_end(epoch,
+                    logs={'val_loss': val_loss, 'val_accuracy': val_accuracy})
+
+            if model.stop_training:
+                break
+
+            next_train = next(train_file_iter)
+            x_train, y_train = load_data(next_train, args.target)
+            y_train_one_hot = np_utils.to_categorical(y_train, n_classes)
+
+            epoch += 1
+            batch += 1
+
+        callbacks.on_train_end(logs={})
+    else:
+        model.fit(x_train, y_train_one_hot,
+            shuffle=False,
+            batch_size=model_cfg.batch_size,
+            show_accuracy=True,
+            validation_data=(x_validation, y_validation_one_hot),
+            callbacks=callbacks,
+            class_weight=class_weight,
+            verbose=2 if args.log else 1)
 
 if __name__ == '__main__':
     sys.exit(main(get_parser()))
