@@ -12,7 +12,7 @@ import numpy as np
 import theano
 import h5py
 import six
-from sklearn.metrics import classification_report, confusion_matrix, f1_score
+from sklearn.metrics import classification_report, f1_score
 
 from keras.utils import np_utils
 from keras.optimizers import SGD
@@ -24,11 +24,10 @@ import keras.models
 sys.path.append('.')
 
 class ClassificationReport(keras.callbacks.Callback):
-    def __init__(self, x, y, logger, target_names=None, msg='', error_classes_only=True):
+    def __init__(self, x, y, logger, target_names=None, error_classes_only=True):
         self.x = x
         self.y = y
         self.logger = logger
-        self.msg = msg
 
         if target_names is not None:
             if error_classes_only:
@@ -41,13 +40,13 @@ class ClassificationReport(keras.callbacks.Callback):
         self.labels = labels
         self.target_names = target_names
 
-    def on_epoch_end(self, batch, logs={}):
+    def on_epoch_end(self, epoch, logs={}):
         y_hat = self.model.predict_classes(self.x, verbose=0)
+        fbeta = fbeta_score(self.y, y_hat, beta=0.5, average='weighted')
         report = classification_report(
                 self.y, y_hat,
                 labels=self.labels, target_names=self.target_names)
-        if self.msg and len(self.msg):
-            self.logger(self.msg)
+        self.logger("epoch {0} - val_f0.5: {1}".format(epoch, fbeta))
         self.logger(report)
 
     def error_classes(self, target_names):
@@ -57,21 +56,6 @@ class ClassificationReport(keras.callbacks.Callback):
         pairs = [pair.split('-') for pair in target_names]
         mask = np.array([pair[0] != pair[1] for pair in pairs])
         return labels[mask], target_names[mask]
-
-class ConfusionMatrix(keras.callbacks.Callback):
-    def __init__(self, x, y, logger, msg=''):
-        self.x = x
-        self.y = y
-        self.logger = logger
-        self.msg = msg
-
-    def on_epoch_end(self, batch, logs={}):
-        y_hat = self.model.predict_classes(self.x, verbose=0)
-        report = confusion_matrix(
-                self.y, y_hat)
-        if self.msg and len(self.msg):
-            self.logger(self.msg)
-        self.logger(report)
 
 class ModelConfig:
     def __init__(self, **entries): 
@@ -285,7 +269,6 @@ def main(args):
     if args.classification_report:
         cr = ClassificationReport(x_validation, y_validation,
                 callback_logger,
-                msg='Validation set metrics',
                 target_names=target_names,
                 error_classes_only=args.error_classes_only)
         callbacks.append(cr)
@@ -331,12 +314,13 @@ def main(args):
             logging.info("epoch {0} - finished {1} batches".format(
                     epoch, len(batches)))
 
-            val_loss, val_accuracy = model.evaluate(x_validation,
-                    y_validation_one_hot, show_accuracy=True,
-                    verbose=2 if args.log else 1)
+            logging.info("epoch {0} - loss: {1} - acc: {2}".format(
+                    epoch, avg_train_loss, avg_train_accuracy))
 
-            logging.info("epoch {0} - loss: {1} - acc: {2} - val_loss: {3} - val_acc: {4}".format(
-                    epoch, avg_train_loss, avg_train_accuracy, val_loss, val_accuracy))
+            val_loss, val_accuracy = model.evaluate(
+                    x_validation, y_validation_one_hot,
+                    show_accuracy=True,
+                    verbose=0 if args.log else 1)
 
             epoch_end_logs = {'val_loss': val_loss, 'val_accuracy': val_accuracy}
             callbacks.on_epoch_end(epoch, epoch_end_logs)
