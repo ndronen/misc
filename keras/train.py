@@ -20,6 +20,7 @@ import keras.callbacks
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 import keras.models
 #from nick.callbacks import SklearnMetricCheckpoint
+from nick.utils import count_parameters
 
 sys.path.append('.')
 
@@ -248,6 +249,9 @@ def main(args):
     from model import build_model
     model_cfg = ModelConfig(**json_cfg)
     model = build_model(model_cfg)
+
+    logging.info('model has {n_params} parameters'.format(
+        n_params=count_parameters(model)))
 
     if args.extra_train_file is not None:
         callbacks = keras.callbacks.CallbackList()
