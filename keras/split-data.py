@@ -1,5 +1,6 @@
 import os
 import h5py
+import numpy as np
 
 def split_data(path, split_size):
     """
@@ -14,8 +15,10 @@ def split_data(path, split_size):
         n = max(n, v.value.shape[0])
     
     # Copy subsequences of the data to smaller files.
+    width = int(np.ceil(np.log10(n / split_size)))
     for i,j in enumerate(range(0, n, split_size)):
-        outfile = '{0}-{1}.h5'.format(prefix, i)
+        outfile = '{file}-{num:{fill}{width}}.h5'.format(
+                file=prefix, num=i, fill='0', width=width)
         print(outfile)
         fout = h5py.File(outfile, 'w')
         for k,v in f.iteritems():

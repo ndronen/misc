@@ -46,7 +46,8 @@ class ClassificationReport(keras.callbacks.Callback):
         report = classification_report(
                 self.y, y_hat,
                 labels=self.labels, target_names=self.target_names)
-        self.logger("epoch {0} - val_f0.5: {1}".format(epoch, fbeta))
+        self.logger("epoch {epoch} iteration {iteration} - val_f0.5: {fbeta}".format(
+            epoch=epoch, iteration=logs['iteration'], fbeta=fbeta))
         self.logger(report)
 
     def error_classes(self, target_names):
@@ -120,6 +121,8 @@ def get_parser():
             help='Short description of this model (data, hyperparameters, etc.)')
     parser.add_argument('--seed', default=1, type=int,
             help='The seed for the random number generator')
+    parser.add_argument('--shuffle', default=False, action='store_true',
+            help='Shuffle the data in each minibatch')
     parser.add_argument('--n-train', default=np.inf, type=int,
             help='The number of training examples to use')
     parser.add_argument('--n-validation', default=np.inf, type=int,
@@ -152,6 +155,8 @@ def main(args):
 
     if args.log and not args.no_save:
         logging.basicConfig(filename=model_path + 'model.log',
+                format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                datefmt='%m-%d %H:%M',
                 level=logging.DEBUG)
         sys.stdout = LoggerWriter(logging.info)
         sys.stderr = LoggerWriter(logging.warning)
@@ -174,7 +179,7 @@ def main(args):
         y_validation = y_validation[0:args.n_validation]
         x_validation = x_validation[0:args.n_validation, :]
     
-    np.random.seed(args.seed)
+    rng = np.random.RandomState(args.seed)
 
     if args.target_data:
         target_names_dict = json.load(open(args.target_data))
@@ -243,7 +248,10 @@ def main(args):
     model_cfg = ModelConfig(**json_cfg)
     model = build_model(model_cfg)
 
-    callbacks = keras.callbacks.CallbackList()
+    if args.extra_train_file is not None:
+        callbacks = keras.callbacks.CallbackList()
+    else:
+        callbacks = []
 
     if not args.no_save:
         if args.description:
@@ -255,7 +263,7 @@ def main(args):
             shutil.copyfile(args.model_dir + '/' + model_file,
                     model_path + '/' + model_file)
 
-        json.dump(args, open(model_path + '/args.json', 'w'))
+        json.dump(vars(args), open(model_path + '/args.json', 'w'))
 
         # And weights.
         callbacks.append(ModelCheckpoint(
@@ -275,34 +283,46 @@ def main(args):
                 error_classes_only=args.error_classes_only)
         callbacks.append(cr)
 
-    callbacks._set_model(model)
 
     if args.extra_train_file is not None:
+
         args.extra_train_file.append(args.train_file)
         logging.info("Using the following files for training: " +
                 ','.join(args.extra_train_file))
 
         train_file_iter = itertools.cycle(args.extra_train_file)
         current_train = args.train_file
-        epoch = batch = 0
+
+        callbacks._set_model(model)
         callbacks.on_train_begin(logs={})
+
+        epoch = batch = 0
+
         while True:
-            logging.info("epoch {0} - training with {1}".format(
-                    epoch, current_train))
+            iteration = batch % len(args.extra_train_file)
+
+            logging.info("epoch {epoch} iteration {iteration} - training with {train_file}".format(
+                    epoch=epoch, iteration=iteration, train_file=current_train))
             callbacks.on_epoch_begin(epoch, logs={})
 
-            callbacks.on_batch_begin(batch,
-                    logs={'size': x_train.shape[0]})
+            n_train = x_train.shape[0]
 
-            batches = keras.models.make_batches(x_train.shape[0], model_cfg.batch_size)
-            logging.info("epoch {0} - starting {1} batches".format(
-                    epoch, len(batches)))
+            callbacks.on_batch_begin(batch, logs={'size': n_train})
+
+            index_array = np.arange(n_train)
+            if args.shuffle:
+                index_array = rng.shuffle(index_array)
+
+            batches = keras.models.make_batches(n_train, model_cfg.batch_size)
+            logging.info("epoch {epoch} iteration {iteration} - starting {n_batches} batches".format(
+                    epoch=epoch, iteration=iteration, n_batches=len(batches)))
 
             avg_train_loss = avg_train_accuracy = 0.
             for batch_index, (batch_start, batch_end) in enumerate(batches):
+                batch_ids = index_array[batch_start:batch_end]
+
                 train_loss, train_accuracy = model.train_on_batch(
-                        x_train[batch_start:batch_end],
-                        y_train_one_hot[batch_start:batch_end],
+                        x_train[batch_ids], y_train_one_hot[batch_ids],
                         accuracy=True, class_weight=class_weight)
 
                 batch_end_logs = {'loss': train_loss, 'accuracy': train_accuracy}
@@ -313,37 +333,39 @@ def main(args):
                 callbacks.on_batch_end(batch,
                         logs={'loss': train_loss, 'accuracy': train_accuracy})
 
-            logging.info("epoch {0} - finished {1} batches".format(
-                    epoch, len(batches)))
+            logging.info("epoch {epoch} iteration {iteration} - finished {n_batches} batches".format(
+                    epoch=epoch, iteration=iteration, n_batches=len(batches)))
 
-            logging.info("epoch {0} - loss: {1} - acc: {2}".format(
-                    epoch, avg_train_loss, avg_train_accuracy))
+            logging.info("epoch {epoch} iteration {iteration} - loss: {loss} - acc: {acc}".format(
+                    epoch=epoch, iteration=iteration, loss=avg_train_loss, acc=avg_train_accuracy))
 
-            val_loss, val_accuracy = model.evaluate(
+            val_loss, val_acc = model.evaluate(
                     x_validation, y_validation_one_hot,
                     show_accuracy=True,
                     verbose=0 if args.log else 1)
 
-            logging.info("epoch {0} - val_loss: {1} - val_acc: {2}".format(
-                    epoch, val_loss, val_accuracy))
-            epoch_end_logs = {'val_loss': val_loss, 'val_accuracy': val_accuracy}
+            logging.info("epoch {epoch} iteration {iteration} - val_loss: {val_loss} - val_acc: {val_acc}".format(
+                    epoch=epoch, iteration=iteration, val_loss=val_loss, val_acc=val_acc))
+            epoch_end_logs = {'iteration': iteration, 'val_loss': val_loss, 'val_acc': val_acc}
             callbacks.on_epoch_end(epoch, epoch_end_logs)
 
             if model.stop_training:
-                logging.info("epoch {0} - done training".format(epoch))
+                logging.info("epoch {epoch} iteration {iteration} - done training".format(
+                    epoch=epoch, iteration=iteration))
                 break
 
             current_train = next(train_file_iter)
             x_train, y_train = load_data(current_train, args.target)
             y_train_one_hot = np_utils.to_categorical(y_train, n_classes)
 
-            epoch += 1
             batch += 1
+            if batch % len(args.extra_train_file) == 0:
+                epoch += 1
 
         callbacks.on_train_end(logs={})
     else:
         model.fit(x_train, y_train_one_hot,
-            shuffle=False,
+            shuffle=args.shuffle,
             batch_size=model_cfg.batch_size,
             show_accuracy=True,
             validation_data=(x_validation, y_validation_one_hot),
