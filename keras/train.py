@@ -240,6 +240,7 @@ def main(args):
     json_cfg['n_vocab'] = max(args.n_vocab, np.max(x_train) + 1)
     json_cfg['input_width'] = x_train.shape[1]
     json_cfg['n_classes'] = n_classes
+    json_cfg['seed'] = args.seed
 
     logging.debug("loading model")
 
