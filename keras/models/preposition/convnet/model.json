@@ -1,0 +1,16 @@
+{
+    "n_word_dims": 50,
+    "use_difference": false,
+    "n_filters": 500,
+    "filter_width": 4,
+    "loss": "categorical_crossentropy",
+    "patience": 30,
+    "batch_size": 128,
+    "optimizer": "SGD",
+    "learning_rate": 0.1,
+    "momentum": 0.9,
+    "decay": 0.000000001,
+    "embedding_max_norm": 2,
+    "filter_max_norm": 3,
+    "dense_max_norm": 2
+}
