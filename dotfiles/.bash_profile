@@ -22,11 +22,18 @@ export PYRO_SERIALIZER=pickle
 
 export R_HISTFILE=~/.Rhistory
 
-export PATH=$HOME/bin:$HOME/miniconda/bin:/usr/local/bin:/usr/local/sbin:/usr/local/opt/coreutils/libexec/gnubin:$PATH:/usr/local/cuda-6.5/bin:~/proj/torch/install/bin
-export PATH=$PATH:~/proj/misc/bin:~/proj/jobman/bin:~/proj/Theano/bin:$PATH
+
+export PATH=$HOME/bin:/usr/local/bin:/usr/local/sbin:/usr/local/opt/coreutils/libexec/gnubin:~/proj/pylearn2/pylearn2/scripts:$PATH:/usr/local/cuda-7.0/bin:/usr/local/cuda-6.5/bin:~/proj/torch/install/bin
+export PATH=~/miniconda/bin:~/proj/misc/bin:~/proj/jobman/bin:~/proj/Theano/bin:$PATH:~/proj/pylearnutils/pylearnutils/bin
+
 export MANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
-export LD_LIBRARY_PATH=/usr/local/cuda-6.5/lib64:~/proj/torch/install/lib
+export LD_LIBRARY_PATH=/usr/local/cuda-7.0/lib64:/usr/local/cuda-6.5/lib64:~/proj/torch/install/lib:~/proj/torch/install/lib/lua/5.1/
 export BYOBU_PREFIX=$(brew --prefix)
+
+export PYTHONUNBUFFERED=1
+#export CHAINER_SEED=1
+
+export DEV64=184.72.154.89
 
 #export PYENV_ROOT=/usr/local/opt/pyenv  
 #eval "$(pyenv init -)"
