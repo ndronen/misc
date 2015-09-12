@@ -5,12 +5,12 @@ from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.recurrent import LSTM, GRU
 from keras.layers.embeddings import Embedding
 from keras.constraints import maxnorm
-from keras.optimizers import SGD, Adam
+from keras.optimizers import SGD, Adam, RMSprop, Adadelta, Adagrad
 
 from nick.layers import ImmutableEmbedding
 
 def build_model(args):
-    print("args", args)
+    print("args", vars(args))
 
     model = Sequential()
 
@@ -21,7 +21,7 @@ def build_model(args):
             weights=[W]))
     else:
         model.add(Embedding(args.n_vocab, args.n_word_dims,
-            #mask_zero=args.mask_zero,
+            mask_zero=args.mask_zero,
             W_constraint=maxnorm(args.embedding_max_norm)))
 
     model.add(LSTM(args.n_word_dims, args.n_units,
@@ -29,10 +29,15 @@ def build_model(args):
         return_sequences=True))
     model.add(Dropout(0.2))
 
-    #model.add(LSTM(args.n_units, args.n_units,
-    #    truncate_gradient=args.truncate_gradient,
-    #    return_sequences=True))
-    #model.add(Dropout(0.2))
+    model.add(LSTM(args.n_units, args.n_units,
+        truncate_gradient=args.truncate_gradient,
+        return_sequences=True))
+    model.add(Dropout(0.2))
+
+    model.add(LSTM(args.n_units, args.n_units,
+        truncate_gradient=args.truncate_gradient,
+        return_sequences=True))
+    model.add(Dropout(0.2))
 
     model.add(LSTM(args.n_units, args.n_units,
         truncate_gradient=args.truncate_gradient,
@@ -47,7 +52,13 @@ def build_model(args):
             decay=args.decay, momentum=args.momentum,
             clipnorm=args.clipnorm)
     elif args.optimizer == 'Adam':
-        optimizer = Adam()
+        optimizer = Adam(clipnorm=args.clipnorm)
+    elif args.optimizer == 'RMSprop':
+        optimizer = RMSprop(clipnorm=args.clipnorm)
+    elif args.optimizer == 'Adadelta':
+        optimizer = Adadelta(clipnorm=args.clipnorm)
+    elif args.optimizer == 'Adagrad':
+        optimizer = Adagrad(clipnorm=args.clipnorm)
     else:
         raise ValueError("don't know how to use optimizer {0}".format(args.optimizer))
 
