@@ -6,7 +6,7 @@ from keras import models
 from keras.layers import embeddings
 from keras.layers import core
 
-from nonconvnet import ZeroFillDiagonals, \
+from nick.nonconvnet import ZeroFillDiagonals, \
         SplitOutputByFilter, \
         SlidingWindowL2Pooling
 
