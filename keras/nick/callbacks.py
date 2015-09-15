@@ -35,7 +35,7 @@ class SklearnMetricCheckpointClassification(Callback):
 '''
 
 class ClassificationReport(Callback):
-    def __init__(self, x, y, logger, target_names=None, error_classes_only=True):
+    def __init__(self, x, y, logger, target_names=None, error_classes_only=True, iteration_freq=10):
         self.x = x
         self.y = y
         self.logger = logger
@@ -52,17 +52,24 @@ class ClassificationReport(Callback):
         self.target_names = target_names
 
     def on_epoch_end(self, epoch, logs={}):
+        if 'iteration' in logs.keys() and logs['iteration'] % self.iteration_freq != 0:
+            # If we've broken a large training set into smaller chunks, we don't
+            # need to run the classification report after every chunk.
+            return
+
         y_hat = self.model.predict_classes(self.x, verbose=0)
         fbeta = fbeta_score(self.y, y_hat, beta=0.5, average='weighted')
         report = classification_report(
                 self.y, y_hat,
                 labels=self.labels, target_names=self.target_names)
+
         if 'iteration' in logs.keys():
             self.logger("epoch {epoch} iteration {iteration} - val_fbeta(beta=0.5): {fbeta}".format(
                 epoch=epoch, iteration=logs['iteration'], fbeta=fbeta))
         else:
             self.logger("epoch {epoch} - val_fbeta(beta=0.5): {fbeta}".format(
                 epoch=epoch, fbeta=fbeta))
+
         self.logger(report)
 
     def error_classes(self, target_names):
