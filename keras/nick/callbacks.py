@@ -73,33 +73,20 @@ class ClassificationReport(Callback):
         mask = np.array([pair[0] != pair[1] for pair in pairs])
         return labels[mask], target_names[mask]
 
-class ModelConfig:
-    def __init__(self, **entries): 
-        self.__dict__.update(entries)
+class OptimizerMonitor(Callback):
+    def __init__(self, logger):
+        self.logger = logger
 
-    def __repr__(self):
-        return '<%s>' % \
-            str('\n '.join('%s : %s' % \
-                (k, repr(v)) for (k, v) in self.__dict__.iteritems()))
+    def on_epoch_end(self, epoch, logs={}):
+        if not hasattr(self.model.optimizer, 'lr'):
+            return
 
-class LoggerWriter:
-    def __init__(self, level):
-        # self.level is really like using log.debug(message)
-        # at least in my case
-        self.level = level
+        lr = self.model.optimizer.lr.get_value()
+        optimizer_state = str({ 'lr': lr })
 
-    def write(self, message):
-        # if statement reduces the amount of newlines that are
-        # printed to the logger
-        if message != '\n':
-            self.level(message)
-                
-    def flush(self):
-        # create a flush method so things can be flushed when
-        # the system wants to. Not sure if simply 'printing'
-        # sys.stderr is the correct way to do it, but it seemed
-        # to work properly for me.
-        self.level(sys.stderr)
-
-def callable_print(s):
-    print(s)
+        if 'iteration' in logs.keys():
+            self.logger("epoch {epoch} iteration {iteration} - optimizer state {optimizer_state}".format(
+                epoch=epoch, iteration=logs['iteration'], optimizer_state=optimizer_state))
+        else:
+            self.logger("epoch {epoch} - optimizer state {optimizer_state}".format(
+                epoch=epoch, optimizer_state=optimizer_state))
