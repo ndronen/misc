@@ -38,7 +38,7 @@ buildModel = function(opt)
   end
   
   local inputFrameSize = opt.wordDims; -- dimensionality of one sequence element 
-  local kw = opt.kernelWidth;          -- kernel spans three input elements
+  local kw = opt.filterWidth;          -- kernel spans three input elements
   local dw = 1;          -- we step once and go on to the next sequence element
   
   -- K for k-max pooling
@@ -108,7 +108,7 @@ buildModel = function(opt)
 
   model:add(lookupTable)
   
-  local penultimateOutput = k * opt.nKernels
+  local penultimateOutput = k * opt.nFilters
   local ninput = penultimateOutput
   
   if opt.spatial then
@@ -177,9 +177,9 @@ buildModel = function(opt)
     model:add(nn.View(penultimateOutput))
   else
     -- if opt.type == 'cuda' then
-    --  model:add(nn.TemporalConvolutionFB(inputFrameSize, opt.nKernels, kw, dw))
+    --  model:add(nn.TemporalConvolutionFB(inputFrameSize, opt.nFilters, kw, dw))
     -- else
-    local conv = nn.TemporalConvolution(inputFrameSize, opt.nKernels, kw, dw)
+    local conv = nn.TemporalConvolution(inputFrameSize, opt.nFilters, kw, dw)
     --[[
     Only renorm the convolutional filters if explicitly requested.
     This is unlike the lookup table, where I renorm before training
@@ -215,7 +215,7 @@ buildModel = function(opt)
 
     -- model:add(nn.BatchNormalization(0))
     model:add(nn.Dropout(0.5))
-    model:add(nn.View(k * opt.nKernels))
+    model:add(nn.View(k * opt.nFilters))
   end
   
   -- stage 3: fully-connected layers

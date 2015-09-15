@@ -1,6 +1,6 @@
 require 'xlua'   -- xlua provides useful tools, like progress bars
 
-function test(model, data, opts)
+function hybridTest(model, data, opts)
   local mode = opts.mode
   local dataType = opts.type
   local loss = opts.loss
