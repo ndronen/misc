@@ -39,6 +39,7 @@ class ClassificationReport(Callback):
         self.x = x
         self.y = y
         self.logger = logger
+        self.iteration_freq = iteration_freq
 
         if target_names is not None:
             if error_classes_only:
