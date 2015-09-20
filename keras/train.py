@@ -14,87 +14,24 @@ import h5py
 import six
 from sklearn.metrics import classification_report, fbeta_score
 
+
 from keras.utils import np_utils
 from keras.optimizers import SGD
 import keras.callbacks
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 import keras.models
-#from nick.callbacks import SklearnMetricCheckpoint
-from nick.utils import count_parameters
 
 sys.path.append('.')
 
-class ClassificationReport(keras.callbacks.Callback):
-    def __init__(self, x, y, logger, target_names=None, error_classes_only=True):
-        self.x = x
-        self.y = y
-        self.logger = logger
+from nick.callbacks import ClassificationReport
+from nick.utils import (count_parameters, callable_print,
+        ModelConfig, LoggerWriter)
 
-        if target_names is not None:
-            if error_classes_only:
-                labels, target_names = self.error_classes(target_names)
-            else:
-                labels = np.arange(len(target_names))
-        else:
-            labels = None
-
-        self.labels = labels
-        self.target_names = target_names
-
-    def on_epoch_end(self, epoch, logs={}):
-        y_hat = self.model.predict_classes(self.x, verbose=0)
-        fbeta = fbeta_score(self.y, y_hat, beta=0.5, average='weighted')
-        report = classification_report(
-                self.y, y_hat,
-                labels=self.labels, target_names=self.target_names)
-        self.logger("epoch {epoch} iteration {iteration} - val_f0.5: {fbeta}".format(
-            epoch=epoch, iteration=logs['iteration'], fbeta=fbeta))
-        self.logger(report)
-
-    def error_classes(self, target_names):
-        # Assumes actual labels (numeric codes) start at 0 and are
-        # contiguous.
-        labels = np.arange(len(target_names))
-        pairs = [pair.split('-') for pair in target_names]
-        mask = np.array([pair[0] != pair[1] for pair in pairs])
-        return labels[mask], target_names[mask]
-
-class ModelConfig:
-    def __init__(self, **entries): 
-        self.__dict__.update(entries)
-
-    def __repr__(self):
-        return '<%s>' % \
-            str('\n '.join('%s : %s' % \
-                (k, repr(v)) for (k, v) in self.__dict__.iteritems()))
-
-class LoggerWriter:
-    def __init__(self, level):
-        # self.level is really like using log.debug(message)
-        # at least in my case
-        self.level = level
-
-    def write(self, message):
-        # if statement reduces the amount of newlines that are
-        # printed to the logger
-        if message != '\n':
-            self.level(message)
-                
-    def flush(self):
-        # create a flush method so things can be flushed when
-        # the system wants to. Not sure if simply 'printing'
-        # sys.stderr is the correct way to do it, but it seemed
-        # to work properly for me.
-        self.level(sys.stderr)
-
-def fake_print(s):
-    print(s)
-
-def load_data(path, y_name, X_name='X'):
-    data = h5py.File(path)
-    x_data = data[X_name].value.astype(np.int32)
-    y_data = data[y_name].value.astype(np.int32)
-    return x_data, y_data
+def load_data(path, data_name, target_name):
+    hdf5 = h5py.File(path)
+    data = hdf5[data_name].value.astype(np.int32)
+    target = hdf5[target_name].value.astype(np.int32)
+    return data, target
 
 """
 Train a model on sentences.
@@ -109,7 +46,9 @@ def get_parser():
             help='HDF5 file of training examples.')
     parser.add_argument('validation_file', metavar='VALIDATION_FILE', type=str,
             help='HDF5 file of validation examples.')
-    parser.add_argument('target', metavar='TARGET_NAME', type=str,
+    parser.add_argument('data_name', metavar='DATA_NAME', type=str,
+            help='Name of the data variable in input HDF5 file.')
+    parser.add_argument('target_name', metavar='TARGET_NAME', type=str,
             help='Name of the target variable in input HDF5 file.')
 
     parser.add_argument('--extra-train-file', type=str, nargs='+',
@@ -164,9 +103,11 @@ def main(args):
     else:
         logging.basicConfig(level=logging.DEBUG)
 
-    x_train, y_train = load_data(args.train_file, args.target)
+    x_train, y_train = load_data(args.train_file,
+            args.data_name, args.target_name)
     x_validation, y_validation = load_data(
-            args.validation_file, args.target)
+            args.validation_file,
+            args.data_name, args.target_name)
 
     if len(y_train) > args.n_train:
         logging.info("Reducing training set size from " +
@@ -186,9 +127,9 @@ def main(args):
         target_names_dict = json.load(open(args.target_data))
 
         try:
-            target_data = target_names_dict[args.target]
+            target_data = target_names_dict[args.target_name]
         except KeyError:
-            raise ValueError("Invalid key " + args.target +
+            raise ValueError("Invalid key " + args.target_name +
                     " for dictionary in " + args.target_data)
 
         if isinstance(target_data, dict):
@@ -279,7 +220,7 @@ def main(args):
     callbacks.append(EarlyStopping(
         monitor='val_loss', patience=model_cfg.patience, verbose=1))
 
-    callback_logger = logging.info if args.log else fake_print
+    callback_logger = logging.info if args.log else callable_print
 
     if args.classification_report:
         cr = ClassificationReport(x_validation, y_validation,
@@ -360,7 +301,8 @@ def main(args):
                 break
 
             current_train = next(train_file_iter)
-            x_train, y_train = load_data(current_train, args.target)
+            x_train, y_train = load_data(current_train,
+                    args.data_name, args.target_name)
             y_train_one_hot = np_utils.to_categorical(y_train, n_classes)
 
             batch += 1

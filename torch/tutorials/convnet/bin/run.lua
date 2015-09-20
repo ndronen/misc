@@ -12,6 +12,7 @@ cmd:argument('trainFile', 'HDF5 file containing training data', 'string')
 cmd:text('Options:')
 cmd:option('-test', false, 'whether to load and predict on test set')
 cmd:option('-testFile', "nil", 'HDF5 file containing test data')
+cmd:option('-modelType', 'convnet', 'type of model: convnet | hybrid')
 cmd:option('-nTrain', 0, 'size of the training set (taken from first nTrain elements of training set)')
 cmd:option('-nValidation', 0, 'size of the validation set to hold out from training (taken from last nValidation elements of training set)')
 cmd:option('-seed', 1, 'fixed input seed for repeatable experiments')
@@ -29,8 +30,8 @@ cmd:option('-zeroVector', 0, 'index of zero vector in dictionary: [1, dict size]
 cmd:option('-zeroZeroVector', false, 'always undo any weight updates to the unknown word zero vector')
 cmd:option('-lookupTableDropout', 0, 'apply dropout to input before lookup table layer')
 cmd:option('-padding', 2, 'the number of leading and trailing zero-padding entries per sentence')
-cmd:option('-kernelWidth', 2, 'width of kernels: 2 or greater')
-cmd:option('-nKernels', 500, 'number of kernels: 2 or greater')
+cmd:option('-filterWidth', 2, 'width of kernels: 2 or greater')
+cmd:option('-nFilters', 500, 'number of kernels: 2 or greater')
 cmd:option('-nFullyConnectedLayers', '1', 'number of extra fully-connected layers after convolutional layers')
 cmd:option('-maxNorm', 1, 'maximum 2-norm of neuron weights in fully-connected layers')
 cmd:option('-maxWordNorm', 0, 'maximum 2-norm of word representations in lookup table')
@@ -60,7 +61,11 @@ require 'convnet.loss'
 require 'convnet.optim'
 require 'convnet.train'
 require 'convnet.test'
+require 'convnet.hybridmodel'
+require 'convnet.hybridtrain'
+require 'convnet.hybridtest'
 
+cmd:option('-modelType', 'convnet', 'type of model: convnet | hybrid')
 
 if opt.type == 'float' then
   require 'nn'
@@ -192,10 +197,10 @@ while true do
   -- logger or confusion matrix objects.
   -- TODO: save the model here if validation performance is best one yet.
   if validData ~= nil then
-    test(model, validData, { mode='validation', logger=validationLogger, confusion=confusion, loss=opt.loss, type=opt.type })
+    test(model, validData, { mode='validation', logger=validationLogger, confusion=confusion, loss=opt.loss, type=opt.type, maxClass=confusion.nclasses })
   end
   if testData ~= nil then
-    test(model, testData, { mode='test', logger=testLogger, confusion=confusion, loss=opt.loss, type=opt.type })
+    test(model, testData, { mode='test', logger=testLogger, confusion=confusion, loss=opt.loss, type=opt.type, maxClass=confusion.nclasses })
   end
 
   epoch = epoch + 1
