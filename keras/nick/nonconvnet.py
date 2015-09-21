@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import theano
 import theano.tensor as T
 import unittest
 import logging
@@ -7,29 +8,30 @@ import logging
 logger = logging.getLogger()
 
 from keras.layers.core import Layer
+from keras.utils.theano_utils import sharedX
 
 class SplitOutputByFilter(Layer):
     """
     input: (n_samples, max_sent_len, n_filters * filter_width)
-    output: (n_samples, max_sent_len, n_filters, filter_width)
+    output: (n_samples, n_filters, max_sent_len, filter_width)
     """
-    def __init__(self, n_filters):
+    def __init__(self, n_filters, filter_width):
         super(SplitOutputByFilter, self).__init__()
         self.n_filters = n_filters
+        self.filter_width = filter_width
         self.input = T.tensor3()
 
-    def _get_output(self, X):
-        # x = vector()
-        # splits = lvector()
-        # You have to declare, in advance, the number of splits.
-        #points = T.repeat(X.shape)
-        splits = T.split(X, splits, n_splits=self.n_filters, axis=2)
+    def slice(self, i, X):
+        start = i * self.filter_width
+        end = (i+1) * self.filter_width
+        return X[:, :, start:end]
 
-        # f = function([x, splits], [ra, rb, rc])
-        # a, b, c = f([0,1,2,3,4,5], [3, 2, 1])
-        # a == [0,1,2]
-        # b == [3, 4]
-        # c == [5]
+    def _get_output(self, X):
+        outputs, updates = theano.scan(fn=self.slice,
+            outputs_info=None,
+            sequences=[T.arange(self.n_filters)],
+            non_sequences=X)
+        return outputs.dimshuffle(1, 0, 2, 3)
 
     def get_output(self, train):
         return self._get_output(self.get_input(train))

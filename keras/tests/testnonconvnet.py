@@ -1,6 +1,8 @@
 import unittest
 import random
 import numpy as np
+import theano
+import theano.tensor as T
 
 from keras import models
 from keras.layers import embeddings
@@ -52,18 +54,35 @@ class TestNonConvNet(unittest.TestCase):
     def testSplitOutputByFilter(self):
         self.setSeeds()
 
-        x = np.random.normal(size=(self.n_samples, self.max_sent_len,
-                self.n_filters * self.filter_width))
+        #n_samples = 2
+        #max_sent_len = 3
+        #n_filters = 4
+        #filter_width = 5
 
-        model = models.Sequential()
-        # input: (n_samples, max_sent_len, n_filters * filter_width)
-        # output: (n_samples, max_sent_len, n_filters, filter_width)
-        model.add(SplitOutputByFilter(self.n_filters))
-        model.compile(loss='mse', optimizer='sgd')
-        expected_shape = (self.n_samples, self.n_filters, 
-            self.filter_width, self.filter_width)
-        output = model.predict(x)
-        self.assertEquals(expected_shape, output.shape)
+        input_shape = (self.n_samples, self.max_sent_len,
+                self.n_filters * self.filter_width)
+        output_shape = (self.n_samples, self.n_filters,
+                self.max_sent_len, self.filter_width)
+
+        x = np.arange(np.prod(input_shape))
+        x = x.reshape(input_shape).astype(np.int32)
+        y = np.zeros_like(x)
+        y = np.reshape(y, output_shape)
+
+        for i in range(self.n_filters):
+            s = x[:, :, i*self.filter_width:(i+1)*self.filter_width]
+            y[:, i, :, :] = s
+
+        xt = T.itensor3('xt')
+        layer = SplitOutputByFilter(self.n_filters, self.filter_width)
+        yt = layer._get_output(xt)
+
+        f = theano.function(inputs=[xt], outputs=yt)
+
+        y_theano = f(x)
+        self.assertEquals(y.shape, y_theano.shape)
+        self.assertTrue(np.all(y == y_theano))
+
 
     @unittest.skip("not implemented")
     def testSlidingWindowL2Pooling(self):
