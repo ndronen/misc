@@ -52,7 +52,6 @@ class TestNonConvNet(unittest.TestCase):
         output_l2 = model.predict(x)
         self.assertEqual(expected_shape_l2, output_l2.shape)
 
-    #@unittest.skip('disabled temporarily')
     def testSplitOutputByFilter(self):
         self.setSeeds()
 
@@ -92,6 +91,7 @@ class TestNonConvNet(unittest.TestCase):
                 self.filter_width, self.filter_width)
 
         x = np.zeros(shape=input_shape)
+        expected = np.zeros(shape=output_shape)
 
         max_input_shape = (self.n_samples, self.filter_width, self.filter_width)
 
@@ -101,7 +101,9 @@ class TestNonConvNet(unittest.TestCase):
             start = i
             end = i+self.filter_width
             values = i + np.arange(np.prod(max_input_shape))
-            x[:, i, start:end, :] = values.reshape(max_input_shape)
+            values = values.reshape(max_input_shape)
+            x[:, i, start:end, :] = values
+            expected[:, i, :, :] = values
 
         it = T.iscalar()
         x3d = T.dtensor3('x3d')
@@ -117,10 +119,9 @@ class TestNonConvNet(unittest.TestCase):
         yt_filter_dim = layer.filter_dimension(it, x3d)
         f_filter_dim = theano.function(inputs=[it, x3d], outputs=yt_filter_dim)
         y_filter_dim_out = f_filter_dim(0, x[0])
-        expected = x[0, 0, 0:4, :]
         self.assertEquals((self.filter_width, self.filter_width),
                 y_filter_dim_out.shape)
-        self.assertTrue(np.all(expected == y_filter_dim_out))
+        self.assertTrue(np.all(expected[0, 0, :, :] == y_filter_dim_out))
 
         '''
         Use the first sample to test `filter_dimension`.
@@ -128,13 +129,21 @@ class TestNonConvNet(unittest.TestCase):
         yt_sample_dim = layer.sample_dimension(it, x4d)
         f_sample_dim = theano.function(inputs=[it, x4d], outputs=yt_sample_dim)
         y_sample_dim_out = f_sample_dim(0, x)
-        expected = x[0:1, :, 0:4, :] 
-        expected[0, 0, :, :] = x[0, 0, 0:4, :]
-        expected[0, 1, :, :] = x[0, 1, 1:5, :]
-        expected[0, 2, :, :] = x[0, 2, 2:6, :]
         self.assertEquals((self.n_filters, self.filter_width, self.filter_width),
                 y_sample_dim_out.shape)
-        self.assertTrue(np.all(expected == y_sample_dim_out))
+        self.assertTrue(np.all(expected[0, :, :, :] == y_sample_dim_out))
+
+        '''
+        Use all of `x` to test `_get_output`.
+        '''
+        yt_output = layer._get_output(x4d)
+        f_output = theano.function(inputs=[x4d], outputs=yt_output)
+        yt_out = f_output(x)
+        self.assertEquals(
+                (self.n_samples, self.n_filters, self.filter_width,
+                self.filter_width), yt_out.shape)
+        self.assertTrue(np.all(expected == yt_out))
+
 
     @unittest.skip("not implemented")
     def testZeroFillDiagonals(self):
