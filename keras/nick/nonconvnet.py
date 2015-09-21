@@ -121,8 +121,30 @@ class SlidingWindowL2MaxPooling(Layer):
         return (X[i:i+self.filter_width, :] ** 2).sum()
 
 class ZeroFillDiagonals(Layer):
-    def forward_cpu(self, x):
-        for i in np.arange(x[0].shape[0]):
-            np.fill_diagonal(x[0][i, :, :], 0)
-        logger.debug(x[0].shape)
-        return x
+    '''
+    input: (n_samples, n_filters, filter_width, filter_width)
+    output: (n_samples, n_filters, filter_width, filter_width) with the
+    diagonal of the last two `(filter_width, filter_width)` dimensions 
+    zeroed out.
+    '''
+    def __init__(self, batch_size, n_filters, filter_width):
+        self.batch_size = batch_size
+        self.n_filters = n_filters
+        self.filter_width = filter_width
+
+        # Construct a shared boolean matrix by which to multiply the input
+        # element-wise.  It should be 0 everywhere except on the diagonals
+        # of the last two dimensions.
+        input_shape = (batch_size, n_filters, filter_width, filter_width)
+        mask = np.ones(input_shape)
+        diag_indices = np.arange(filter_width)
+        for i in np.arange(batch_size):
+            for j in np.arange(n_filters):
+                mask[i, j, diag_indices, diag_indices] = 0
+        self.mask = sharedX(mask, dtype='int32')
+
+    def get_output(self, train):
+        return self._get_output(self.get_input(train))
+
+    def _get_output(self, X):
+        return X * self.mask

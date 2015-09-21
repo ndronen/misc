@@ -144,7 +144,24 @@ class TestNonConvNet(unittest.TestCase):
                 self.filter_width), yt_out.shape)
         self.assertTrue(np.all(expected == yt_out))
 
-
-    @unittest.skip("not implemented")
     def testZeroFillDiagonals(self):
-        raise NotImplementedError()
+        input_shape = (self.n_samples, self.n_filters,
+                self.filter_width, self.filter_width)
+        mask = np.ones(input_shape)
+        diag_indices = np.arange(self.filter_width)
+        for i in np.arange(self.n_samples):
+            for j in np.arange(self.n_filters):
+                mask[i, j, diag_indices, diag_indices] = 0
+
+        x = np.arange(np.prod(input_shape)).reshape(input_shape)
+        expected = x * mask
+
+        x4d = T.dtensor4('x4d')
+        layer = ZeroFillDiagonals(
+                self.n_samples, self.n_filters, self.filter_width)
+        yt_output = layer._get_output(x4d)
+        f_output = theano.function(inputs=[x4d], outputs=yt_output)
+
+        yt_out = f_output(x)
+        self.assertEquals(expected.shape, yt_out.shape)
+        self.assertTrue(np.all(expected == yt_out))
