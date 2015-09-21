@@ -12,8 +12,8 @@ from keras.utils.theano_utils import sharedX
 
 class SplitOutputByFilter(Layer):
     """
-    input: (n_samples, max_seq_len, n_filters * filter_width)
-    output: (n_samples, n_filters, max_seq_len, filter_width)
+    input: (batch_size, max_seq_len, n_filters * filter_width)
+    output: (batch_size, n_filters, max_seq_len, filter_width)
     """
     def __init__(self, n_filters, filter_width):
         super(SplitOutputByFilter, self).__init__()
@@ -42,10 +42,11 @@ class SplitOutputByFilter(Layer):
 
 class SlidingWindowL2MaxPooling(Layer):
     '''
-    input: (n_samples, n_filters, max_seq_len, filter_width)
-    output: (n_samples, n_filters, filter_width, filter_width)
+    input: (batch_size, n_filters, max_seq_len, filter_width)
+    output: (batch_size, n_filters, filter_width, filter_width)
     '''
     def __init__(self, batch_size, n_filters, filter_width, max_seq_len):
+        super(SlidingWindowL2MaxPooling, self).__init__()
         self.batch_size = batch_size
         self.n_filters = n_filters
         self.filter_width = filter_width
@@ -63,15 +64,15 @@ class SlidingWindowL2MaxPooling(Layer):
 
     def sample_dimension(self, i, X):
         '''
-        Takes a 4-tensor of shape `(n_samples, n_filters, max_seq_len,
+        Takes a 4-tensor of shape `(batch_size, n_filters, max_seq_len,
         filter_width)` and an index into its first dimension.  Returns the
-        `(n_samples, n_filters, filter_width, filter_width)` subtensor
+        `(batch_size, n_filters, filter_width, filter_width)` subtensor
         with the greatest L2 norm along the third dimension.
 
         Parameters
         ----------
         X : a 4-tensor
-            An `(n_samples, n_filters, max_seq_len, filter_width)` tensor.
+            An `(batch_size, n_filters, max_seq_len, filter_width)` tensor.
         i : int
             An index into the first dimension of `X`.
 
@@ -98,7 +99,7 @@ class SlidingWindowL2MaxPooling(Layer):
         Parameters
         ----------
         X : a 3-tensor
-            An `(n_samples, n_filters, max_seq_len, filter_width)` tensor.
+            An `(batch_size, n_filters, max_seq_len, filter_width)` tensor.
         i : int
             An index into the first dimension of `X`.
 
@@ -122,12 +123,13 @@ class SlidingWindowL2MaxPooling(Layer):
 
 class ZeroFillDiagonals(Layer):
     '''
-    input: (n_samples, n_filters, filter_width, filter_width)
-    output: (n_samples, n_filters, filter_width, filter_width) with the
+    input: (batch_size, n_filters, filter_width, filter_width)
+    output: (batch_size, n_filters, filter_width, filter_width) with the
     diagonal of the last two `(filter_width, filter_width)` dimensions 
     zeroed out.
     '''
     def __init__(self, batch_size, n_filters, filter_width):
+        super(ZeroFillDiagonals, self).__init__()
         self.batch_size = batch_size
         self.n_filters = n_filters
         self.filter_width = filter_width
