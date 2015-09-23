@@ -323,7 +323,7 @@ def main(args):
             if batch % len(args.extra_train_file) == 0:
                 epoch += 1
 
-            if epoch > n_epochs:
+            if epoch > args.n_epochs:
                 break
 
         callbacks.on_train_end(logs={})
