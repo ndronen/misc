@@ -112,6 +112,9 @@ class VersionedModelCheckpoint(Callback):
         self.fmt_string = '{basepath}-{epoch:0' + str(width) + 'd}{ext}'
 
     def on_epoch_end(self, epoch, logs={}):
+        logs['val_loss'] = -self.epoch
+        self.delegate.on_epoch_end(epoch, logs)
+
         if os.path.exists(self.filepath):
             newpath = self.fmt_string.format(
                     basepath=self.basepath, epoch=self.epoch, ext=self.ext)
