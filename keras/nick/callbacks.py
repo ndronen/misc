@@ -1,5 +1,7 @@
+import os
 import numpy as np
 from keras.callbacks import Callback
+import keras.callbacks
 import numpy as np
 import six
 from sklearn.metrics import classification_report, fbeta_score
@@ -98,3 +100,19 @@ class OptimizerMonitor(Callback):
         else:
             self.logger("epoch {epoch} - optimizer state {optimizer_state}".format(
                 epoch=epoch, optimizer_state=optimizer_state))
+
+class VersionedModelCheckpoint(keras.callbacks.ModelCheckpoint):
+    def __init__(self, filepath, monitor='val_loss', verbose=0, max_epochs=10000):
+        super(VersionedModelCheckpoint).__init__(
+                filepath, monitor, verbose, save_best_only=False)
+        self.basepath, self.ext = os.path.splitext(self.filepath)
+        self.epoch = 0
+        width = int(np.log10(max_epochs)) + 1
+        self.fmt_string = '{basepath}-{epoch:0' + str(width) + 'd}.{ext}'
+
+    def on_epoch_end(self, epoch, logs={}):
+        if os.path.exists(self.filepath):
+            newpath = self.fmt_string.format(
+                    basepath=self.basepath, epoch=self.epoch, ext=self.ext)
+            os.rename(self.filepath, newpath)
+        self.epoch += 1
