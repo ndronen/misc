@@ -9,11 +9,11 @@ import json
 import itertools 
 
 import numpy as np
+
 import theano
 import h5py
 import six
 from sklearn.metrics import classification_report, fbeta_score
-
 
 from keras.utils import np_utils
 from keras.optimizers import SGD
@@ -64,7 +64,7 @@ def get_parser():
             help='Pickled dictionary of target data from sklearn.preprocessing.LabelEncoder.  The dictionary must contain a key `TARGET_NAME` that maps either to a list of target names or a dictionary mapping target names to their class weights (useful for imbalanced data sets')
     parser.add_argument('--description', type=str,
             help='Short description of this model (data, hyperparameters, etc.)')
-    parser.add_argument('--seed', default=1, type=int,
+    parser.add_argument('--seed', default=17, type=int,
             help='The seed for the random number generator')
     parser.add_argument('--shuffle', default=False, action='store_true',
             help='Shuffle the data in each minibatch')
