@@ -76,6 +76,8 @@ def get_parser():
             help='The number of validation examples to use')
     parser.add_argument('--n-vocab', default=-1, type=int,
             help='The number of words in the training vocabulary')
+    parser.add_argument('--n-classes', default=-1, type=int,
+            help='The number of classes in TARGET_NAME')
     parser.add_argument('--log', action='store_true',
             help='Whether to send console output to log file')
     parser.add_argument('--no-save', action='store_true',
@@ -157,7 +159,10 @@ def main(args):
     else:
         target_names = None
         class_weight = None
-        n_classes = max(y_train)+1
+        if args.n_classes > -1:
+            n_classes = args.n_classes
+        else:
+            n_classes = max(y_train)+1
 
     if class_weight is not None:
         # Keys are strings in JSON; convert them to int.
@@ -318,7 +323,7 @@ def main(args):
             if batch % len(args.extra_train_file) == 0:
                 epoch += 1
 
-            if epoch > n_epochs:
+            if epoch > args.n_epochs:
                 break
 
         callbacks.on_train_end(logs={})
