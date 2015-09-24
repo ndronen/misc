@@ -9,11 +9,11 @@ import json
 import itertools 
 
 import numpy as np
+
 import theano
 import h5py
 import six
 from sklearn.metrics import classification_report, fbeta_score
-
 
 from keras.utils import np_utils
 from keras.optimizers import SGD
@@ -23,13 +23,18 @@ import keras.models
 
 sys.path.append('.')
 
-from nick.callbacks import ClassificationReport
+from nick.callbacks import ClassificationReport, OptimizerMonitor
 from nick.utils import (count_parameters, callable_print,
         ModelConfig, LoggerWriter)
 
 def load_data(path, data_name, target_name):
     hdf5 = h5py.File(path)
-    data = hdf5[data_name].value.astype(np.int32)
+    datasets = [hdf5[d].value.astype(np.int32) for d in data_name]
+    for i,d in enumerate(datasets):
+        if d.ndim == 1:
+            datasets[i] = d.reshape((d.shape[0], 1))
+    print([d.shape for d in datasets])
+    data = np.concatenate(datasets, axis=1)
     target = hdf5[target_name].value.astype(np.int32)
     return data, target
 
@@ -46,11 +51,11 @@ def get_parser():
             help='HDF5 file of training examples.')
     parser.add_argument('validation_file', metavar='VALIDATION_FILE', type=str,
             help='HDF5 file of validation examples.')
-    parser.add_argument('data_name', metavar='DATA_NAME', type=str,
-            help='Name of the data variable in input HDF5 file.')
-    parser.add_argument('target_name', metavar='TARGET_NAME', type=str,
-            help='Name of the target variable in input HDF5 file.')
+    parser.add_argument('data_name', nargs='+', type=str,
+            help='Name(s) of the data variable(s) in input HDF5 file.')
 
+    parser.add_argument('--target-name', default='target_code', type=str,
+            help='Name of the target variable in input HDF5 file.')
     parser.add_argument('--extra-train-file', type=str, nargs='+',
             help='path to one or more extra train files, useful for when training set is too big to fit into memory.')
     parser.add_argument('--model-dest', type=str,
@@ -59,16 +64,20 @@ def get_parser():
             help='Pickled dictionary of target data from sklearn.preprocessing.LabelEncoder.  The dictionary must contain a key `TARGET_NAME` that maps either to a list of target names or a dictionary mapping target names to their class weights (useful for imbalanced data sets')
     parser.add_argument('--description', type=str,
             help='Short description of this model (data, hyperparameters, etc.)')
-    parser.add_argument('--seed', default=1, type=int,
+    parser.add_argument('--seed', default=17, type=int,
             help='The seed for the random number generator')
     parser.add_argument('--shuffle', default=False, action='store_true',
             help='Shuffle the data in each minibatch')
+    parser.add_argument('--n-epochs', type=int, default=100,
+            help='The maximum number of epochs to train')
     parser.add_argument('--n-train', default=np.inf, type=int,
             help='The number of training examples to use')
     parser.add_argument('--n-validation', default=np.inf, type=int,
             help='The number of validation examples to use')
     parser.add_argument('--n-vocab', default=-1, type=int,
             help='The number of words in the training vocabulary')
+    parser.add_argument('--n-classes', default=-1, type=int,
+            help='The number of classes in TARGET_NAME')
     parser.add_argument('--log', action='store_true',
             help='Whether to send console output to log file')
     parser.add_argument('--no-save', action='store_true',
@@ -150,7 +159,10 @@ def main(args):
     else:
         target_names = None
         class_weight = None
-        n_classes = max(y_train)+1
+        if args.n_classes > -1:
+            n_classes = args.n_classes
+        else:
+            n_classes = max(y_train)+1
 
     if class_weight is not None:
         # Keys are strings in JSON; convert them to int.
@@ -191,6 +203,8 @@ def main(args):
     model_cfg = ModelConfig(**json_cfg)
     model = build_model(model_cfg)
 
+    setattr(model, 'stop_training', False)
+
     logging.info('model has {n_params} parameters'.format(
         n_params=count_parameters(model)))
 
@@ -217,10 +231,11 @@ def main(args):
             verbose=1,
             save_best_only=True))
 
+    callback_logger = logging.info if args.log else callable_print
+    callbacks.append(OptimizerMonitor(callback_logger))
+
     callbacks.append(EarlyStopping(
         monitor='val_loss', patience=model_cfg.patience, verbose=1))
-
-    callback_logger = logging.info if args.log else callable_print
 
     if args.classification_report:
         cr = ClassificationReport(x_validation, y_validation,
@@ -228,7 +243,6 @@ def main(args):
                 target_names=target_names,
                 error_classes_only=args.error_classes_only)
         callbacks.append(cr)
-
 
     if args.extra_train_file is not None:
 
@@ -309,10 +323,14 @@ def main(args):
             if batch % len(args.extra_train_file) == 0:
                 epoch += 1
 
+            if epoch > args.n_epochs:
+                break
+
         callbacks.on_train_end(logs={})
     else:
         model.fit(x_train, y_train_one_hot,
             shuffle=args.shuffle,
+            nb_epoch=args.n_epochs,
             batch_size=model_cfg.batch_size,
             show_accuracy=True,
             validation_data=(x_validation, y_validation_one_hot),
