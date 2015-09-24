@@ -120,3 +120,7 @@ class VersionedModelCheckpoint(Callback):
                     basepath=self.basepath, epoch=self.epoch, ext=self.ext)
             os.rename(self.filepath, newpath)
         self.epoch += 1
+
+    def _set_model(self, model)
+        self.model = model
+        self.delegate._set_model(model)
