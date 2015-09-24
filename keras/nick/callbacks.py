@@ -103,8 +103,9 @@ class OptimizerMonitor(Callback):
 
 class VersionedModelCheckpoint(keras.callbacks.ModelCheckpoint):
     def __init__(self, filepath, monitor='val_loss', verbose=0, max_epochs=10000):
+        save_best_only = False
         super(VersionedModelCheckpoint).__init__(
-                filepath, monitor, verbose, save_best_only=False)
+                filepath, monitor, verbose, save_best_only)
         self.basepath, self.ext = os.path.splitext(self.filepath)
         self.epoch = 0
         width = int(np.log10(max_epochs)) + 1
