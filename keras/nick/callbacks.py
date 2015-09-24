@@ -101,15 +101,15 @@ class OptimizerMonitor(Callback):
             self.logger("epoch {epoch} - optimizer state {optimizer_state}".format(
                 epoch=epoch, optimizer_state=optimizer_state))
 
-class VersionedModelCheckpoint(keras.callbacks.ModelCheckpoint):
-    def __init__(self, filepath, monitor='val_loss', verbose=0, max_epochs=10000):
-        save_best_only = False
-        super(VersionedModelCheckpoint).__init__(
-                filepath, monitor, verbose, save_best_only)
-        self.basepath, self.ext = os.path.splitext(self.filepath)
+class VersionedModelCheckpoint(object):
+    def __init__(self, filepath, max_epochs=10000, **kwargs):
+        kwargs['save_best_only'] = False
+        self.delegate = keras.callbacks.ModelCheckpoint(filepath, **kwargs)
+        self.filepath = filepath
+        self.basepath, self.ext = os.path.splitext(filepath)
         self.epoch = 0
         width = int(np.log10(max_epochs)) + 1
-        self.fmt_string = '{basepath}-{epoch:0' + str(width) + 'd}.{ext}'
+        self.fmt_string = '{basepath}-{epoch:0' + str(width) + 'd}{ext}'
 
     def on_epoch_end(self, epoch, logs={}):
         if os.path.exists(self.filepath):
