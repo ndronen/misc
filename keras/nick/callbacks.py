@@ -101,7 +101,7 @@ class OptimizerMonitor(Callback):
             self.logger("epoch {epoch} - optimizer state {optimizer_state}".format(
                 epoch=epoch, optimizer_state=optimizer_state))
 
-class VersionedModelCheckpoint(object):
+class VersionedModelCheckpoint(Callback):
     def __init__(self, filepath, max_epochs=10000, **kwargs):
         kwargs['save_best_only'] = False
         self.delegate = keras.callbacks.ModelCheckpoint(filepath, **kwargs)
