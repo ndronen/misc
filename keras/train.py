@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+# TODO: add feature to allow passing model configuration parameters as
+# command-line arguments.
+
+
 import os, sys, shutil
 import argparse
 import logging
@@ -38,6 +42,24 @@ def load_data(path, data_name, target_name):
     target = hdf5[target_name].value.astype(np.int32)
     return data, target
 
+def kvpair(s):
+    try:
+        k,v = s.split('=')
+        if '.' in v:
+            try:
+                v = float(v)
+            except ValueError:
+                pass
+        else:
+            try:
+                v = int(v)
+            except ValueError:
+                pass
+        return k,v
+    except:
+        raise argparse.ArgumentTypeError(
+                '--model-cfg arguments must be KEY=VALUE pairs')
+
 """
 Train a model on sentences.
 """
@@ -58,6 +80,8 @@ def get_parser():
             help='Name of the target variable in input HDF5 file.')
     parser.add_argument('--extra-train-file', type=str, nargs='+',
             help='path to one or more extra train files, useful for when training set is too big to fit into memory.')
+    parser.add_argument('--model-cfg', type=kvpair, nargs='+', default=[],
+            help='Model hyper-parameters as KEY=VALUE pairs; overrides parameters in MODEL_DIR/model.json')
     parser.add_argument('--model-dest', type=str,
             help='Directory to which to copy model.py and model.json.  This overrides copying to model_dir/UUID.')
     parser.add_argument('--target-data', type=str,
@@ -187,6 +211,11 @@ def main(args):
         min_vocab_index, max_vocab_index))
 
     json_cfg = json.load(open(args.model_dir + '/model.json'))
+
+    # Copy model parameters provided on the command-line.
+    for k,v in args.model_cfg:
+        json_cfg[k] = v
+
     # Add a few values to the dictionary that are properties
     # of the training data.
     json_cfg['train_file'] = args.train_file
