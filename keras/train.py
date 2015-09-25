@@ -23,7 +23,7 @@ import keras.models
 
 sys.path.append('.')
 
-from nick.callbacks import ClassificationReport, OptimizerMonitor
+from nick.callbacks import ClassificationReport
 from nick.utils import (count_parameters, callable_print,
         ModelConfig, LoggerWriter)
 
@@ -232,7 +232,6 @@ def main(args):
             save_best_only=True))
 
     callback_logger = logging.info if args.log else callable_print
-    callbacks.append(OptimizerMonitor(callback_logger))
 
     callbacks.append(EarlyStopping(
         monitor='val_loss', patience=model_cfg.patience, verbose=1))
