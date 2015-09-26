@@ -124,6 +124,12 @@ def main(args):
     
     if args.shuffle:
         print('Training (shuffled)')
+        # Leave odd-numbered rows where they are; shuffle only
+        # even-numbered ones.  This ensures that each minibatch has one
+        # example from each class.
+        perm = np.arange(x_train.shape[0])
+        evens = np.arange(0, x_train.shape[0], 2)
+        perm[evens] = np.random.permutation(evens)
     else:
         print('Training (contrasting cases)')
     
@@ -131,7 +137,7 @@ def main(args):
     
     model.fit(x_train, y_train,
             batch_size=args.batch_size,
-            shuffle=args.shuffle,
+            shuffle=False,
             nb_epoch=args.n_epochs,
             show_accuracy=True,
             verbose=2 if args.verbose else 0,
