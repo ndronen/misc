@@ -30,7 +30,8 @@ def create_dataset(n, train_size, valid_size):
     # Make the data different along one dimension.
     even = np.arange(0, n, step=2)
     X[even, 0] = np.random.uniform(.75, 1.5, size=n/2)
-    X[even+1, 0] = np.random.uniform(-1.5, -.75, size=n/2)
+    # Make each odd-numbered row the inverse of its previous row.
+    X[even+1, 0] = -X[even, 0]
 
     X += np.random.uniform(0.05, size=X.shape)
 
