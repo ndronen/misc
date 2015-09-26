@@ -29,11 +29,12 @@ def create_dataset(n, train_size, valid_size):
 
     # Make the data different along one dimension.
     even = np.arange(0, n, step=2)
-    X[even, 0] = np.random.uniform(.75, 1.5, size=n/2)
+    X[even, 0] = np.random.uniform(.5, 1.25, size=n/2)
     # Make each odd-numbered row the inverse of its previous row.
     X[even+1, 0] = -X[even, 0]
 
-    X += np.random.uniform(0.05, size=X.shape)
+    X += np.random.uniform(0.01, size=X.shape)
+    X = X.astype(np.float32)
 
     y = np.array([[0,1] * (n/2)]).reshape((n,1))
     y = y.astype(np.int32)
@@ -118,9 +119,12 @@ def main(args):
     '''
     
     # convert class vectors to binary class matrices
-    y_train = np_utils.to_categorical(y_train, n_classes)
-    y_valid = np_utils.to_categorical(y_valid, n_classes)
-    y_test = np_utils.to_categorical(y_test, n_classes)
+    y_train = np_utils.to_categorical(
+            y_train, n_classes).astype(np.int32)
+    y_valid = np_utils.to_categorical(
+            y_valid, n_classes).astype(np.int32)
+    y_test = np_utils.to_categorical(
+            y_test, n_classes).astype(np.int32)
     
     if args.shuffle:
         print('Training (shuffled)')
@@ -134,6 +138,9 @@ def main(args):
         print('Training (contrasting cases)')
     
     model = build_model(100, 20, n_classes)
+
+    print('x_train', x_train.dtype)
+    print('y_train', y_train.dtype)
     
     model.fit(x_train, y_train,
             batch_size=args.batch_size,
