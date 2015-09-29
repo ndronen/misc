@@ -1,9 +1,9 @@
 {
     "train_embeddings": true,
-    "regularization_layer": "normalization",
-    "dropout_p": 0.01,
-    "dropout_p_conv": 0.01,
-    "n_word_dims": 100,
+    "regularization_layer": "",
+    "dropout_p": 0.5,
+    "dropout_p_conv": 0.0,
+    "n_word_dims": 50,
     "border_mode": "valid",
     "use_difference": false,
     "n_filters": 500,

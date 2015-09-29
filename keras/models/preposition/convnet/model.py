@@ -7,7 +7,7 @@ from keras.layers.convolutional import Convolution1D, MaxPooling1D
 from keras.layers.embeddings import Embedding
 from keras.constraints import maxnorm
 from keras.regularizers import l2
-from keras.optimizers import SGD, Adam
+from keras.optimizers import SGD, Adam, Adadelta, Adagrad, RMSprop
 
 from nick.layers import ImmutableEmbedding
 from nick.difference import TemporalDifference
