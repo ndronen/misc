@@ -52,7 +52,7 @@ class ClassificationReport(Callback):
             labels = None
 
         self.labels = labels
-        self.target_names = target_names
+        self.target_names = [str(tn) for tn in target_names]
 
     def on_epoch_end(self, epoch, logs={}):
         if 'iteration' in logs.keys() and logs['iteration'] % self.iteration_freq != 0:
