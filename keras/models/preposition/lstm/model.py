@@ -5,6 +5,7 @@ from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.recurrent import LSTM, GRU
 from keras.layers.embeddings import Embedding
 from keras.constraints import maxnorm
+from keras.regularizers import l2
 from keras.optimizers import SGD, Adam, RMSprop, Adadelta, Adagrad
 
 from nick.layers import ImmutableEmbedding
@@ -14,11 +15,17 @@ def build_model(args):
 
     model = Sequential()
 
-    if hasattr(args, 'weights') and args.weights is not None:
-        W = np.load(args.weights)
-        model.add(ImmutableEmbedding(args.n_vocab, args.n_word_dims,
-            mask_zero=args.mask_zero,
-            weights=[W]))
+    np.random.seed(args.seed)
+
+    if hasattr(args, 'embedding_weights') and args.embedding_weights is not None:
+        W = np.load(args.embedding_weights)
+        if args.train_embeddings:
+            model.add(Embedding(args.n_vocab, args.n_word_dims,
+                weights=[W],
+                W_constraint=maxnorm(args.embedding_max_norm)))
+        else:
+            model.add(ImmutableEmbedding(args.n_vocab, args.n_word_dims,
+                weights=[W]))
     else:
         model.add(Embedding(args.n_vocab, args.n_word_dims,
             mask_zero=args.mask_zero,
@@ -27,24 +34,39 @@ def build_model(args):
     model.add(LSTM(args.n_word_dims, args.n_units,
         truncate_gradient=args.truncate_gradient,
         return_sequences=True))
-    model.add(Dropout(0.2))
+    if args.regularization_layer == 'dropout':
+        model.add(Dropout(0.2))
+    #elif args.regularization_layer == 'normalization':
+    #    model.add(BatchNormalization((args.n_filters,)))
 
     model.add(LSTM(args.n_units, args.n_units,
         truncate_gradient=args.truncate_gradient,
         return_sequences=True))
-    model.add(Dropout(0.2))
+    if args.regularization_layer == 'dropout':
+        model.add(Dropout(0.2))
+    #elif args.regularization_layer == 'normalization':
+    #    model.add(BatchNormalization((args.n_filters,)))
 
+    '''
     model.add(LSTM(args.n_units, args.n_units,
         truncate_gradient=args.truncate_gradient,
         return_sequences=True))
-    model.add(Dropout(0.2))
+    if args.regularization_layer == 'dropout':
+        model.add(Dropout(0.2))
+    #elif args.regularization_layer == 'normalization':
+    #    model.add(BatchNormalization((args.n_filters,)))
+    '''
 
     model.add(LSTM(args.n_units, args.n_units,
         truncate_gradient=args.truncate_gradient,
         return_sequences=False))
-    model.add(Dropout(0.2))
+    if args.regularization_layer == 'dropout':
+        model.add(Dropout(0.2))
+    #elif args.regularization_layer == 'normalization':
+    #    model.add(BatchNormalization((args.n_filters,)))
 
-    model.add(Dense(args.n_units, args.n_classes))
+    model.add(Dense(args.n_units, args.n_classes,
+        W_regularizer=l2(args.l2_penalty)))
     model.add(Activation('softmax'))
 
     if args.optimizer == 'SGD':
@@ -61,8 +83,6 @@ def build_model(args):
         optimizer = Adagrad(clipnorm=args.clipnorm)
     else:
         raise ValueError("don't know how to use optimizer {0}".format(args.optimizer))
-
-    setattr(model, 'stop_training', False)
 
     model.compile(loss=args.loss, optimizer=optimizer)
 
