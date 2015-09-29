@@ -29,18 +29,7 @@ sys.path.append('.')
 
 from nick.callbacks import ClassificationReport
 from nick.utils import (count_parameters, callable_print,
-        ModelConfig, LoggerWriter)
-
-def load_data(path, data_name, target_name):
-    hdf5 = h5py.File(path)
-    datasets = [hdf5[d].value.astype(np.int32) for d in data_name]
-    for i,d in enumerate(datasets):
-        if d.ndim == 1:
-            datasets[i] = d.reshape((d.shape[0], 1))
-    print([d.shape for d in datasets])
-    data = np.concatenate(datasets, axis=1)
-    target = hdf5[target_name].value.astype(np.int32)
-    return data, target
+        load_model_data, ModelConfig, LoggerWriter,
 
 def kvpair(s):
     try:
@@ -136,9 +125,9 @@ def main(args):
     else:
         logging.basicConfig(level=logging.DEBUG)
 
-    x_train, y_train = load_data(args.train_file,
+    x_train, y_train = load_model_data(args.train_file,
             args.data_name, args.target_name)
-    x_validation, y_validation = load_data(
+    x_validation, y_validation = load_model_data(
             args.validation_file,
             args.data_name, args.target_name)
 
@@ -252,7 +241,7 @@ def main(args):
             shutil.copyfile(args.model_dir + '/' + model_file,
                     model_path + '/' + model_file)
 
-        json.dump(vars(args), open(model_path + '/args.json', 'w'))
+        json.dump(vars(model_cfg), open(model_path + '/args.json', 'w'))
 
         # And weights.
         callbacks.append(ModelCheckpoint(
