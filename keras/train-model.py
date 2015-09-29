@@ -29,7 +29,7 @@ sys.path.append('.')
 
 from nick.callbacks import ClassificationReport
 from nick.utils import (count_parameters, callable_print,
-        load_model_data, ModelConfig, LoggerWriter,
+        load_model_data, ModelConfig, LoggerWriter)
 
 def kvpair(s):
     try:
