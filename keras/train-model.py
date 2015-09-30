@@ -332,7 +332,7 @@ def main(args):
                 break
 
             current_train = next(train_file_iter)
-            x_train, y_train = load_data(current_train,
+            x_train, y_train = load_model_data(current_train,
                     args.data_name, args.target_name)
             y_train_one_hot = np_utils.to_categorical(y_train, n_classes)
 
