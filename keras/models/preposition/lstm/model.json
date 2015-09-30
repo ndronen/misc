@@ -1,6 +1,6 @@
 {
     "regularization_layer": null,
-    "n_word_dims": 100,
+    "n_word_dims": 50,
     "n_units": 100,
     "loss": "categorical_crossentropy",
     "patience": 10,
