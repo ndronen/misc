@@ -203,7 +203,7 @@ def main(args):
     json_cfg = json.load(open(args.model_dir + '/model.json'))
 
     # Copy command-line arguments.
-    for k,v in vars(args):
+    for k,v in vars(args).iteritems():
         json_cfg[k] = v
     # Copy (overriding) model parameters provided on the command-line.
     for k,v in args.model_cfg:
@@ -288,7 +288,7 @@ def main(args):
 
             index_array = np.arange(n_train)
             if args.shuffle:
-                index_array = rng.shuffle(index_array)
+                rng.shuffle(index_array)
 
             batches = keras.models.make_batches(n_train, model_cfg.batch_size)
             logging.info("epoch {epoch} iteration {iteration} - starting {n_batches} batches".format(
