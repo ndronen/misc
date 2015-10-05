@@ -199,20 +199,20 @@ def main(args):
     logging.debug("min vocab index {0} max vocab index {1}".format(
         min_vocab_index, max_vocab_index))
 
+    # Load the base model configuration.
     json_cfg = json.load(open(args.model_dir + '/model.json'))
 
-    # Copy model parameters provided on the command-line.
+    # Copy command-line arguments.
+    for k,v in vars(args).iteritems():
+        json_cfg[k] = v
+    # Copy (overriding) model parameters provided on the command-line.
     for k,v in args.model_cfg:
         json_cfg[k] = v
 
-    # Add a few values to the dictionary that are properties
-    # of the training data.
-    json_cfg['train_file'] = args.train_file
-    json_cfg['validation_file'] = args.validation_file
+    # Add some values are derived from the training data.
     json_cfg['n_vocab'] = max(args.n_vocab, np.max(x_train) + 1)
     json_cfg['input_width'] = x_train.shape[1]
     json_cfg['n_classes'] = n_classes
-    json_cfg['seed'] = args.seed
 
     logging.debug("loading model")
 
@@ -288,7 +288,7 @@ def main(args):
 
             index_array = np.arange(n_train)
             if args.shuffle:
-                index_array = rng.shuffle(index_array)
+                rng.shuffle(index_array)
 
             batches = keras.models.make_batches(n_train, model_cfg.batch_size)
             logging.info("epoch {epoch} iteration {iteration} - starting {n_batches} batches".format(
