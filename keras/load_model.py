@@ -10,16 +10,19 @@ def load_model(model_dir, input_file_arg='validation_file'):
     args_json = json.load(open(model_dir + '/args.json'))
     model_json = json.load(open(model_dir + '/model.json'))
     model_json.update(args_json)
+    print(model_json)
 
-    for k,v in model_json['model_cfg']:
-        model_json[k] = v
+    if 'model_cfg' in model_json:
+        for k,v in model_json['model_cfg']:
+            model_json[k] = v
 
     data, target = load_model_data(
             model_json[input_file_arg],
             model_json['data_name'], model_json['target_name'])
 
     model_json['input_width'] = data.shape[1]
-    model_json['n_classes'] = np.max(target) + 1
+    if 'n_classes' not in model_json:
+        model_json['n_classes'] = np.max(target) + 1
 
     target_one_hot = to_categorical(target, model_json['n_classes'])
 
