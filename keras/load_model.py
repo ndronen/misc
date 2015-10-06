@@ -10,31 +10,24 @@ from sklearn import metrics
 
 def load_model(model_dir, input_file_arg='validation_file'):
     args_json = json.load(open(model_dir + '/args.json'))
-    print('args.json', args_json)
     model_json = json.load(open(model_dir + '/model.json'))
-    print('model.json', model_json)
     model_json.update(args_json)
-    print(model_json)
 
     if 'model_cfg' in model_json:
         for k,v in model_json['model_cfg']:
             model_json[k] = v
 
-    data, target = load_model_data(
-            model_json[input_file_arg],
-            model_json['data_name'], model_json['target_name'])
-
-    _, current_word_target = load_model_data(
-            model_json[input_file_arg],
-            model_json['data_name'], 'current_word_code')
-
-    _, position = load_model_data(
-            model_json[input_file_arg],
-            model_json['data_name'], 'position')
-
     f = h5py.File(model_json[input_file_arg])
-    length = f['len'].value
-    f.close()
+    datasets = [f[d].value.astype(np.int32) for d in model_json['data_name']]
+    for i,d in enumerate(datasets):
+        if d.ndim == 1:
+            datasets[i] = d.reshape((d.shape[0], 1))
+    print([d.shape for d in datasets])
+    data = np.concatenate(datasets, axis=1)
+    target = f[model_json['target_name']].value.astype(np.int32)
+
+    seen_keys = model_json['data_name']
+    seen_keys.append(model_json['target_name'])
 
     model_json['input_width'] = data.shape[1]
     if 'n_classes' not in model_json:
@@ -51,20 +44,22 @@ def load_model(model_dir, input_file_arg='validation_file'):
     # Load the saved weights.
     model.load_weights(model_dir + '/model.h5')
 
-    # Convert to a namespace for easy tab completion.
     results = {
             "model": model,
             "data": data,
             "target": target,
             "one_hot_target": one_hot_target,
-            "current_word_target": current_word_target,
-            "length": length,
-            "position": position,
             "config": model_cfg
             }
 
+    for key in f.keys():
+        if key not in seen_keys:
+            results[key] = f[key].value
+
+    f.close()
+
+    # Convert to a namespace for easy tab completion.
     return ModelConfig(**results)
-    #return model, data, one_hot_target, target, current_word_target, len
 
 def print_classification_report(target, pred, target_names, digits=4):
     print(metrics.classification_report(target, pred, target_names=target_names, digits=digits))
