@@ -53,30 +53,41 @@ def build_model(args):
     if 'normalization' in args.regularization_layer:
         model.add(BatchNormalization((args.n_filters,)))
 
-    model.add(Dense(args.n_filters, 2*args.n_filters,
+    model.add(Dense(args.n_filters, args.n_hidden,
         W_regularizer=l2(args.l2_penalty)))
     model.add(Activation('relu'))
     if 'dropout' in args.regularization_layer:
         model.add(Dropout(args.dropout_p))
     if 'normalization' in args.regularization_layer:
-        model.add(BatchNormalization((2*args.n_filters,)))
+        model.add(BatchNormalization((args.n_hidden,)))
 
-    model.add(Dense(2*args.n_filters, 2*args.n_filters))
-    model.add(Activation('relu'))
-    if 'dropout' in args.regularization_layer:
-        model.add(Dropout(args.dropout_p))
-    if 'normalization' in args.regularization_layer:
-        model.add(BatchNormalization((2*args.n_filters,)))
-
-    model.add(Dense(2*args.n_filters, 2*args.n_filters,
+    model.add(Dense(args.n_hidden, args.n_hidden,
         W_regularizer=l2(args.l2_penalty)))
     model.add(Activation('relu'))
     if 'dropout' in args.regularization_layer:
         model.add(Dropout(args.dropout_p))
     if 'normalization' in args.regularization_layer:
-        model.add(BatchNormalization((2*args.n_filters,)))
+        model.add(BatchNormalization((args.n_hidden,)))
 
-    model.add(Dense(2*args.n_filters, args.n_classes,
+    '''
+    model.add(Dense(args.n_hidden, args.n_hidden,
+        W_regularizer=l2(args.l2_penalty)))
+    model.add(Activation('relu'))
+    if 'dropout' in args.regularization_layer:
+        model.add(Dropout(args.dropout_p))
+    if 'normalization' in args.regularization_layer:
+        model.add(BatchNormalization((args.n_hidden,)))
+
+    model.add(Dense(args.n_hidden, args.n_hidden,
+        W_regularizer=l2(args.l2_penalty)))
+    model.add(Activation('relu'))
+    if 'dropout' in args.regularization_layer:
+        model.add(Dropout(args.dropout_p))
+    if 'normalization' in args.regularization_layer:
+        model.add(BatchNormalization((args.n_hidden,)))
+    '''
+
+    model.add(Dense(args.n_hidden, args.n_classes,
         W_regularizer=l2(args.l2_penalty)))
     #if 'normalization' in args.regularization_layer:
     #    model.add(BatchNormalization((args.n_classes,)))
