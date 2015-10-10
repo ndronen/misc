@@ -69,7 +69,6 @@ def build_model(args):
     if 'normalization' in args.regularization_layer:
         model.add(BatchNormalization((args.n_hidden,)))
 
-    '''
     model.add(Dense(args.n_hidden, args.n_hidden,
         W_regularizer=l2(args.l2_penalty)))
     model.add(Activation('relu'))
@@ -85,7 +84,6 @@ def build_model(args):
         model.add(Dropout(args.dropout_p))
     if 'normalization' in args.regularization_layer:
         model.add(BatchNormalization((args.n_hidden,)))
-    '''
 
     model.add(Dense(args.n_hidden, args.n_classes,
         W_regularizer=l2(args.l2_penalty)))
