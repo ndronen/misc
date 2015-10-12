@@ -1,11 +1,14 @@
+from collections import defaultdict
+from operator import itemgetter
+import string
 import re
 import time
 import itertools
 import nltk
+import progressbar
 
 import numpy as np
 from numpy.random import RandomState
-from sklearn.preprocessing import OneHotEncoder
 
 def load_data(path):
     with open(path) as f:
@@ -20,96 +23,134 @@ def build_tokenizer(stanford_jar_path=stanford_jar_path):
 def is_word(token):
     return re.match(r'\w+$', token)
 
-def insert_characters(word, index_to_char, n=1, seed=1):
+def insert_characters(token, index_to_char, n=1, seed=17):
     if isinstance(seed, RandomState):
         rng = seed
     else:
         rng = RandomState(seed)
 
-    idx = rng.randint(len(word))
+    idx = rng.randint(len(token))
     ch = index_to_char[rng.randint(len(index_to_char))]
-    new_word = unicode(word[0:idx] + ch + word[idx:])
-    return new_word
+    new_token = unicode(token[0:idx] + ch + token[idx:])
+    return new_token
 
-def delete_characters(word, index_to_char, n=1, seed=1):
+def delete_characters(token, index_to_char, n=1, seed=17):
     if isinstance(seed, RandomState):
         rng = seed
     else:
         rng = RandomState(seed)
 
-    idx = max(1, rng.randint(len(word)))
-    new_word = unicode(word[0:idx-1] + word[idx:])
-    return new_word
+    idx = max(1, rng.randint(len(token)))
+    new_token = unicode(token[0:idx-1] + token[idx:])
+    return new_token
 
-def replace_characters(word, index_to_char, n=1, seed=1):
+def replace_characters(token, index_to_char, n=1, seed=17):
     if isinstance(seed, RandomState):
         rng = seed
     else:
         rng = RandomState(seed)
 
-    idx = max(1, rng.randint(len(word)))
+    idx = max(1, rng.randint(len(token)))
     ch = index_to_char[rng.randint(len(index_to_char))]
-    new_word = unicode(word[0:idx-1] + ch + word[idx:])
-    return new_word
+    new_token = unicode(token[0:idx-1] + ch + token[idx:])
+    return new_token
+
 
 # Data needs to be converted to input and targets.  An input is a window
-# of k characters around a (possibly corrupted) word w.  A target is a
+# of k characters around a (possibly corrupted) token t.  A target is a
 # one-hot vector representing w.  In English, the average word length
 # is a little more than 5 and there are almost no words longer than 20
 # characters [1].  Initially we will use a window of 100 characters.
-# Since words vary in length, the word w will not be centered in the
+# Since words vary in length, the token t will not be centered in the
 # input.  Instead it will start at the 40th position of the window.
-# This will make the task easier to learn.
+# This will (?) make the task easier to learn.
 #
 # [1] http://www.ravi.io/language-word-lengths
 
-def build_X_y(data, window_size=100, word_pos=40):
+def build_X_y(data, window_size=100, token_pos=40, min_freq=5, max_features=1000):
     tokenizer = build_tokenizer()
-    tokens = tokenizer.tokenize(data)
+    tokens = [t.lower() for t in tokenizer.tokenize(data)]
 
-    word_vocab = set(tokens)
-    word_to_index = dict((w,i) for i,w in enumerate(word_vocab))
-    index_to_word = dict((i,w) for i,w in enumerate(word_vocab))
+    token_vocab = set()
 
-    char_vocab = set([' '])
-    for word in word_vocab:
-        for ch in word:
+    # Limit vocabulary to the max_features-most frequent tokens that
+    # occur at least min_freq times.
+    token_freqs = defaultdict(int)
+    for token in tokens:
+        token_freqs[token] += 1
+
+    most_to_least_freq = sorted(token_freqs.iteritems(),
+            key=itemgetter(1), reverse=True)
+
+    token_i = 0
+    token_to_index = {}
+    index_to_token = {}
+
+    for token, freq in most_to_least_freq:
+        if freq < min_freq or len(token_vocab) == max_features:
+            break
+        if not is_word(token):
+            continue
+
+        token_vocab.add(token)
+        token_to_index[token] = token_i
+        index_to_token[token_i] = token
+        token_i += 1
+
+    char_vocab = set([u' '])
+
+    # This includes most of the characters we care about.  We add any
+    # remaining characters after this loop.
+    for charlist in [string.ascii_letters, string.punctuation, range(10)]:
+        for ch in charlist:
+            char_vocab.add(unicode(str(ch)))
+
+    for token in tokens:
+        for ch in token:
             char_vocab.add(ch)
-    char_to_index = dict((w,i) for i,w in enumerate(char_vocab))
-    index_to_char = dict((i,w) for i,w in enumerate(char_vocab))
+
+    char_to_index = dict((c,i) for i,c in enumerate(char_vocab))
+    index_to_char = dict((i,c) for i,c in enumerate(char_vocab))
 
     X = []
     y = []
 
-    rng = RandomState(seed=1)
+    rng = RandomState(seed=17)
 
-    # Build a window around each word.  The surrounding context consists
+    # Build a window around each token.  The surrounding context consists
     # of the leading and trailing characters that are available to fill
     # the window.
-    for i, word in enumerate(tokens):
 
-        if is_word(word) and i % 2 == 0:
-            corruptor = rng.choice([insert_characters, delete_characters,
-                    replace_characters])
-            input_word = corruptor(word, index_to_char, n=1, seed=rng)
-        else:
-            input_word = word
+    pbar = progressbar.ProgressBar(term_width=40,
+        widgets=[' ', progressbar.Percentage(),
+        ' ', progressbar.ETA()],
+        maxval=len(tokens)).start()
 
-        leading = leading_context(tokens, i, n=word_pos)
-        # Subtract 2 for spaces between leading, word, and trailing.
-        n = window_size - word_pos - len(input_word) - 2
-        trailing = trailing_context(tokens, i, n)
-        window = leading + ' ' + input_word + ' ' + trailing
+    for i, token in enumerate(tokens):
+        pbar.update(i+1)
 
-        X.append([char_to_index[ch] for ch in window])
-        y.append(word_to_index[word])
+        if token not in token_to_index:
+            continue
+
+        ok_window = build_window(tokens, i, token,
+                window_size=window_size, token_pos=token_pos)
+        X.append([char_to_index[ch] for ch in ok_window])
+        y.append(token_to_index[token])
+
+        corruptor = rng.choice([insert_characters, delete_characters,
+            replace_characters])
+        corrupt_token = corruptor(token, index_to_char, n=1, seed=rng)
+        corrupt_window = build_window(tokens, i, corrupt_token,
+                window_size=window_size, token_pos=token_pos)
+        X.append([char_to_index[ch] for ch in corrupt_window])
+        y.append(token_to_index[token])
+
+    pbar.finish()
 
     X = np.array(X)
-    encoder = OneHotEncoder()
-    y = np.array(y).reshape((len(y), 1))
-    y_one_hot = encoder.fit_transform(y)
+    y = np.array(y)
 
-    return X, y, y_one_hot, index_to_word, index_to_char
+    return X, y, index_to_token, index_to_char
 
 def context_is_complete(tokens, n):
     context = ' '.join(tokens)
@@ -149,3 +190,10 @@ def trailing_context(tokens, i, n):
     if not context_is_complete(context, n):
         context.append(' ' * n)
     return trim_trailing_context(context, n)
+
+def build_window(tokens, i, token, window_size=100, token_pos=40):
+    leading = leading_context(tokens, i, n=token_pos)
+    # Subtract 2 for spaces between leading, token, and trailing.
+    n = window_size - token_pos - len(token) - 2
+    trailing = trailing_context(tokens, i, n)
+    return leading + ' ' + token + ' ' + trailing
