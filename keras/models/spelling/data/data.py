@@ -6,6 +6,11 @@ import time
 import itertools
 import nltk
 import progressbar
+import h5py
+import json
+import cPickle
+import random
+from sklearn.cross_validation import train_test_split
 
 import numpy as np
 from numpy.random import RandomState
@@ -21,7 +26,7 @@ def build_tokenizer(stanford_jar_path=stanford_jar_path):
             path_to_jar=stanford_jar_path)
 
 def is_word(token):
-    return re.match(r'\w+$', token)
+    return re.match(r'[\w.-]{2,}$', token)
 
 def insert_characters(token, index_to_char, n=1, seed=17):
     if isinstance(seed, RandomState):
@@ -67,17 +72,20 @@ def replace_characters(token, index_to_char, n=1, seed=17):
 #
 # [1] http://www.ravi.io/language-word-lengths
 
-def build_X_y(data, window_size=100, token_pos=40, min_freq=5, max_features=1000):
+def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=1000, downsample=True):
     tokenizer = build_tokenizer()
     tokens = [t.lower() for t in tokenizer.tokenize(data)]
 
     token_vocab = set()
 
     # Limit vocabulary to the max_features-most frequent tokens that
-    # occur at least min_freq times.
+    # occur between min_freq and max_freq times.
     token_freqs = defaultdict(int)
-    for token in tokens:
+    token_index = defaultdict(list)
+
+    for i, token in enumerate(tokens):
         token_freqs[token] += 1
+        token_index[token].append(i)
 
     most_to_least_freq = sorted(token_freqs.iteritems(),
             key=itemgetter(1), reverse=True)
@@ -88,14 +96,25 @@ def build_X_y(data, window_size=100, token_pos=40, min_freq=5, max_features=1000
 
     for token, freq in most_to_least_freq:
         if freq < min_freq or len(token_vocab) == max_features:
-            break
-        if not is_word(token):
+            del token_index[token]
+            continue
+
+        if not is_word(token) or len(token) == 1:
+            del token_index[token]
             continue
 
         token_vocab.add(token)
         token_to_index[token] = token_i
         index_to_token[token_i] = token
         token_i += 1
+
+    # Downsample a random subset of min_freq indices from the index.
+    if downsample:
+        rng = random.Random(17)
+        for token in token_index.keys():
+            indices = token_index[token]
+            token_index[token] = random.sample(indices, min_freq)
+
 
     char_vocab = set([u' '])
 
@@ -121,29 +140,31 @@ def build_X_y(data, window_size=100, token_pos=40, min_freq=5, max_features=1000
     # of the leading and trailing characters that are available to fill
     # the window.
 
+    maxval = sum([len(token_index[t]) for t in token_index.keys()])
     pbar = progressbar.ProgressBar(term_width=40,
         widgets=[' ', progressbar.Percentage(),
         ' ', progressbar.ETA()],
-        maxval=len(tokens)).start()
+        maxval=maxval).start()
 
-    for i, token in enumerate(tokens):
-        pbar.update(i+1)
+    n = 0
 
-        if token not in token_to_index:
-            continue
+    for token in token_index.keys():
+        for i in token_index[token]:
+            pbar.update(n+1)
+            n += 1
 
-        ok_window = build_window(tokens, i, token,
-                window_size=window_size, token_pos=token_pos)
-        X.append([char_to_index[ch] for ch in ok_window])
-        y.append(token_to_index[token])
+            ok_window = build_window(tokens, i, token,
+                    window_size=window_size, token_pos=token_pos)
+            X.append([char_to_index[ch] for ch in ok_window])
+            y.append(token_to_index[token])
 
-        corruptor = rng.choice([insert_characters, delete_characters,
-            replace_characters])
-        corrupt_token = corruptor(token, index_to_char, n=1, seed=rng)
-        corrupt_window = build_window(tokens, i, corrupt_token,
-                window_size=window_size, token_pos=token_pos)
-        X.append([char_to_index[ch] for ch in corrupt_window])
-        y.append(token_to_index[token])
+            corruptor = rng.choice([insert_characters, delete_characters,
+                replace_characters])
+            corrupt_token = corruptor(token, index_to_char, n=1, seed=rng)
+            corrupt_window = build_window(tokens, i, corrupt_token,
+                    window_size=window_size, token_pos=token_pos)
+            X.append([char_to_index[ch] for ch in corrupt_window])
+            y.append(token_to_index[token])
 
     pbar.finish()
 
@@ -166,25 +187,25 @@ def trim_trailing_context(tokens, n):
     return context[:n]
 
 def leading_context(tokens, i, n):
-    end = max(0, i)
-    available = tokens[:end]
+    end = max(0, i-1)
+    j = end
     context = []
-    while len(available):
-        current = available.pop()
-        context.insert(0, current)
+    while j > 0:
+        context.insert(0, tokens[j])
         if context_is_complete(context, n):
             break
+        j -= 1
     if not context_is_complete(context, n):
         context.insert(0, ' ' * n)
     return trim_leading_context(context, n)
 
 def trailing_context(tokens, i, n):
     start = min(len(tokens), i+1)
-    available = tokens[start:]
+    j = start
     context = []
-    while len(available):
-        current = available.pop(0)
-        context.append(current)
+    while j < len(tokens):
+        context.append(tokens[j])
+        j += 1
         if context_is_complete(context, n):
             break
     if not context_is_complete(context, n):
@@ -197,3 +218,42 @@ def build_window(tokens, i, token, window_size=100, token_pos=40):
     n = window_size - token_pos - len(token) - 2
     trailing = trailing_context(tokens, i, n)
     return leading + ' ' + token + ' ' + trailing
+
+def save_data(X, y, train_size, valid_size, output_prefix='data-', index_to_token=None, index_to_char=None):
+    X_train, X_other, y_train, y_other = train_test_split(X, y, train_size=train_size)
+    X_valid, X_test, y_valid, y_test = train_test_split(X_other, y_other, train_size=valid_size)
+
+    f_train = h5py.File(output_prefix + 'train.h5', 'w')
+    f_train.create_dataset('X', data=X_train, dtype=int)
+    f_train.create_dataset('y', data=y_train, dtype=int)
+    f_train.close()
+
+    f_valid = h5py.File(output_prefix + 'valid.h5', 'w')
+    f_valid.create_dataset('X', data=X_valid, dtype=int)
+    f_valid.create_dataset('y', data=y_valid, dtype=int)
+    f_valid.close()
+
+    f_test = h5py.File(output_prefix + 'test.h5', 'w')
+    f_test.create_dataset('X', data=X_test, dtype=int)
+    f_test.create_dataset('y', data=y_test, dtype=int)
+    f_test.close()
+
+
+    indices = {}
+
+    if index_to_token is not None:
+        indices['token'] = index_to_token
+        names = sorted(index_to_token.iteritems(), key=itemgetter(0))
+        names = [n[1] for n in names]
+        target_data = {}
+        target_data['y'] = {}
+        target_data['y']['names'] = names
+        target_data['y']['weights'] = dict(zip(range(len(names)), [1] * len(names)))
+        json.dump(target_data, open(output_prefix + 'target-data.json', 'w'))
+
+    if index_to_char is not None:
+        indices['char'] = index_to_char
+
+    if len(indices):
+        cPickle.dump(indices, open(output_prefix + 'index.pkl', 'w'))
+
