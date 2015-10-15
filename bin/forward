@@ -1,0 +1,5 @@
+#!/bin/bash
+
+IP=$1
+
+exec ssh ndronen@$IP -L 9999:localhost:9999
