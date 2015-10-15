@@ -1,11 +1,15 @@
 import numpy as np
+import h5py
 
 def count_parameters(model):
-    n = 0
-    for layer in model.layers:
-        for param in layer.params:
-            n += np.prod(param.shape.eval())
-    return n
+    if hasattr(model, 'count_params'):
+        return model.count_params()
+    else:
+        n = 0
+        for layer in model.layers:
+            for param in layer.params:
+                n += np.prod(param.shape.eval())
+        return n
 
 class ModelConfig:
     def __init__(self, **entries): 
@@ -35,3 +39,14 @@ class LoggerWriter:
 
 def callable_print(s):
     print(s)
+
+def load_model_data(path, data_name, target_name):
+    hdf5 = h5py.File(path)
+    datasets = [hdf5[d].value.astype(np.int32) for d in data_name]
+    for i,d in enumerate(datasets):
+        if d.ndim == 1:
+            datasets[i] = d.reshape((d.shape[0], 1))
+    print([d.shape for d in datasets])
+    data = np.concatenate(datasets, axis=1)
+    target = hdf5[target_name].value.astype(np.int32)
+    return data, target

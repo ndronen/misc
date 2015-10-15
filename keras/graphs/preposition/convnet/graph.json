@@ -7,7 +7,6 @@
     "border_mode": "valid",
     "use_difference": false,
     "n_filters": 500,
-    "n_hidden": 500,
     "filter_width": 4,
     "loss": "categorical_crossentropy",
     "patience": 20,
@@ -20,5 +19,6 @@
     "filter_max_norm": 1000,
     "dense_max_norm": 1000,
     "l2_penalty": 0.0,
-    "clipnorm": 0
+    "clipnorm": 0,
+    "time_distributed_merge_mode": "ave"
 }

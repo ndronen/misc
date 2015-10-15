@@ -1,11 +1,19 @@
+from collections import defaultdict
+from operator import itemgetter
+import string
 import re
 import time
 import itertools
 import nltk
+import progressbar
+import h5py
+import json
+import cPickle
+import random
+from sklearn.cross_validation import train_test_split
 
 import numpy as np
 from numpy.random import RandomState
-from sklearn.preprocessing import OneHotEncoder
 
 def load_data(path):
     with open(path) as f:
@@ -18,98 +26,152 @@ def build_tokenizer(stanford_jar_path=stanford_jar_path):
             path_to_jar=stanford_jar_path)
 
 def is_word(token):
-    return re.match(r'\w+$', token)
+    return re.match(r'[\w.-]{2,}$', token)
 
-def insert_characters(word, index_to_char, n=1, seed=1):
+def insert_characters(token, index_to_char, n=1, seed=17):
     if isinstance(seed, RandomState):
         rng = seed
     else:
         rng = RandomState(seed)
 
-    idx = rng.randint(len(word))
+    idx = rng.randint(len(token))
     ch = index_to_char[rng.randint(len(index_to_char))]
-    new_word = unicode(word[0:idx] + ch + word[idx:])
-    return new_word
+    new_token = unicode(token[0:idx] + ch + token[idx:])
+    return new_token
 
-def delete_characters(word, index_to_char, n=1, seed=1):
+def delete_characters(token, index_to_char, n=1, seed=17):
     if isinstance(seed, RandomState):
         rng = seed
     else:
         rng = RandomState(seed)
 
-    idx = max(1, rng.randint(len(word)))
-    new_word = unicode(word[0:idx-1] + word[idx:])
-    return new_word
+    idx = max(1, rng.randint(len(token)))
+    new_token = unicode(token[0:idx-1] + token[idx:])
+    return new_token
 
-def replace_characters(word, index_to_char, n=1, seed=1):
+def replace_characters(token, index_to_char, n=1, seed=17):
     if isinstance(seed, RandomState):
         rng = seed
     else:
         rng = RandomState(seed)
 
-    idx = max(1, rng.randint(len(word)))
+    idx = max(1, rng.randint(len(token)))
     ch = index_to_char[rng.randint(len(index_to_char))]
-    new_word = unicode(word[0:idx-1] + ch + word[idx:])
-    return new_word
+    new_token = unicode(token[0:idx-1] + ch + token[idx:])
+    return new_token
+
 
 # Data needs to be converted to input and targets.  An input is a window
-# of k characters around a (possibly corrupted) word w.  A target is a
+# of k characters around a (possibly corrupted) token t.  A target is a
 # one-hot vector representing w.  In English, the average word length
 # is a little more than 5 and there are almost no words longer than 20
 # characters [1].  Initially we will use a window of 100 characters.
-# Since words vary in length, the word w will not be centered in the
+# Since words vary in length, the token t will not be centered in the
 # input.  Instead it will start at the 40th position of the window.
-# This will make the task easier to learn.
+# This will (?) make the task easier to learn.
 #
 # [1] http://www.ravi.io/language-word-lengths
 
-def build_X_y(data, window_size=100, word_pos=40):
+def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=1000, downsample=True):
     tokenizer = build_tokenizer()
-    tokens = tokenizer.tokenize(data)
+    tokens = [t.lower() for t in tokenizer.tokenize(data)]
 
-    word_vocab = set(tokens)
-    word_to_index = dict((w,i) for i,w in enumerate(word_vocab))
-    index_to_word = dict((i,w) for i,w in enumerate(word_vocab))
+    token_vocab = set()
 
-    char_vocab = set([' '])
-    for word in word_vocab:
-        for ch in word:
+    # Limit vocabulary to the max_features-most frequent tokens that
+    # occur between min_freq and max_freq times.
+    token_freqs = defaultdict(int)
+    token_index = defaultdict(list)
+
+    for i, token in enumerate(tokens):
+        token_freqs[token] += 1
+        token_index[token].append(i)
+
+    most_to_least_freq = sorted(token_freqs.iteritems(),
+            key=itemgetter(1), reverse=True)
+
+    token_i = 0
+    token_to_index = {}
+    index_to_token = {}
+
+    for token, freq in most_to_least_freq:
+        if freq < min_freq or len(token_vocab) == max_features:
+            del token_index[token]
+            continue
+
+        if not is_word(token) or len(token) == 1:
+            del token_index[token]
+            continue
+
+        token_vocab.add(token)
+        token_to_index[token] = token_i
+        index_to_token[token_i] = token
+        token_i += 1
+
+    # Downsample a random subset of min_freq indices from the index.
+    if downsample:
+        rng = random.Random(17)
+        for token in token_index.keys():
+            indices = token_index[token]
+            token_index[token] = random.sample(indices, min_freq)
+
+
+    char_vocab = set([u' '])
+
+    # This includes most of the characters we care about.  We add any
+    # remaining characters after this loop.
+    for charlist in [string.ascii_letters, string.punctuation, range(10)]:
+        for ch in charlist:
+            char_vocab.add(unicode(str(ch)))
+
+    for token in tokens:
+        for ch in token:
             char_vocab.add(ch)
-    char_to_index = dict((w,i) for i,w in enumerate(char_vocab))
-    index_to_char = dict((i,w) for i,w in enumerate(char_vocab))
+
+    char_to_index = dict((c,i) for i,c in enumerate(char_vocab))
+    index_to_char = dict((i,c) for i,c in enumerate(char_vocab))
 
     X = []
     y = []
 
-    rng = RandomState(seed=1)
+    rng = RandomState(seed=17)
 
-    # Build a window around each word.  The surrounding context consists
+    # Build a window around each token.  The surrounding context consists
     # of the leading and trailing characters that are available to fill
     # the window.
-    for i, word in enumerate(tokens):
 
-        if is_word(word) and i % 2 == 0:
+    maxval = sum([len(token_index[t]) for t in token_index.keys()])
+    pbar = progressbar.ProgressBar(term_width=40,
+        widgets=[' ', progressbar.Percentage(),
+        ' ', progressbar.ETA()],
+        maxval=maxval).start()
+
+    n = 0
+
+    for token in token_index.keys():
+        for i in token_index[token]:
+            pbar.update(n+1)
+            n += 1
+
+            ok_window = build_window(tokens, i, token,
+                    window_size=window_size, token_pos=token_pos)
+            X.append([char_to_index[ch] for ch in ok_window])
+            y.append(token_to_index[token])
+
             corruptor = rng.choice([insert_characters, delete_characters,
-                    replace_characters])
-            input_word = corruptor(word, index_to_char, n=1, seed=rng)
-        else:
-            input_word = word
+                replace_characters])
+            corrupt_token = corruptor(token, index_to_char, n=1, seed=rng)
+            corrupt_window = build_window(tokens, i, corrupt_token,
+                    window_size=window_size, token_pos=token_pos)
+            X.append([char_to_index[ch] for ch in corrupt_window])
+            y.append(token_to_index[token])
 
-        leading = leading_context(tokens, i, n=word_pos)
-        # Subtract 2 for spaces between leading, word, and trailing.
-        n = window_size - word_pos - len(input_word) - 2
-        trailing = trailing_context(tokens, i, n)
-        window = leading + ' ' + input_word + ' ' + trailing
-
-        X.append([char_to_index[ch] for ch in window])
-        y.append(word_to_index[word])
+    pbar.finish()
 
     X = np.array(X)
-    encoder = OneHotEncoder()
-    y = np.array(y).reshape((len(y), 1))
-    y_one_hot = encoder.fit_transform(y)
+    y = np.array(y)
 
-    return X, y, y_one_hot, index_to_word, index_to_char
+    return X, y, index_to_token, index_to_char
 
 def context_is_complete(tokens, n):
     context = ' '.join(tokens)
@@ -125,27 +187,73 @@ def trim_trailing_context(tokens, n):
     return context[:n]
 
 def leading_context(tokens, i, n):
-    end = max(0, i)
-    available = tokens[:end]
+    end = max(0, i-1)
+    j = end
     context = []
-    while len(available):
-        current = available.pop()
-        context.insert(0, current)
+    while j > 0:
+        context.insert(0, tokens[j])
         if context_is_complete(context, n):
             break
+        j -= 1
     if not context_is_complete(context, n):
         context.insert(0, ' ' * n)
     return trim_leading_context(context, n)
 
 def trailing_context(tokens, i, n):
     start = min(len(tokens), i+1)
-    available = tokens[start:]
+    j = start
     context = []
-    while len(available):
-        current = available.pop(0)
-        context.append(current)
+    while j < len(tokens):
+        context.append(tokens[j])
+        j += 1
         if context_is_complete(context, n):
             break
     if not context_is_complete(context, n):
         context.append(' ' * n)
     return trim_trailing_context(context, n)
+
+def build_window(tokens, i, token, window_size=100, token_pos=40):
+    leading = leading_context(tokens, i, n=token_pos)
+    # Subtract 2 for spaces between leading, token, and trailing.
+    n = window_size - token_pos - len(token) - 2
+    trailing = trailing_context(tokens, i, n)
+    return leading + ' ' + token + ' ' + trailing
+
+def save_data(X, y, train_size, valid_size, output_prefix='data-', index_to_token=None, index_to_char=None):
+    X_train, X_other, y_train, y_other = train_test_split(X, y, train_size=train_size)
+    X_valid, X_test, y_valid, y_test = train_test_split(X_other, y_other, train_size=valid_size)
+
+    f_train = h5py.File(output_prefix + 'train.h5', 'w')
+    f_train.create_dataset('X', data=X_train, dtype=int)
+    f_train.create_dataset('y', data=y_train, dtype=int)
+    f_train.close()
+
+    f_valid = h5py.File(output_prefix + 'valid.h5', 'w')
+    f_valid.create_dataset('X', data=X_valid, dtype=int)
+    f_valid.create_dataset('y', data=y_valid, dtype=int)
+    f_valid.close()
+
+    f_test = h5py.File(output_prefix + 'test.h5', 'w')
+    f_test.create_dataset('X', data=X_test, dtype=int)
+    f_test.create_dataset('y', data=y_test, dtype=int)
+    f_test.close()
+
+
+    indices = {}
+
+    if index_to_token is not None:
+        indices['token'] = index_to_token
+        names = sorted(index_to_token.iteritems(), key=itemgetter(0))
+        names = [n[1] for n in names]
+        target_data = {}
+        target_data['y'] = {}
+        target_data['y']['names'] = names
+        target_data['y']['weights'] = dict(zip(range(len(names)), [1] * len(names)))
+        json.dump(target_data, open(output_prefix + 'target-data.json', 'w'))
+
+    if index_to_char is not None:
+        indices['char'] = index_to_char
+
+    if len(indices):
+        cPickle.dump(indices, open(output_prefix + 'index.pkl', 'w'))
+
