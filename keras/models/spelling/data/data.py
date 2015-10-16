@@ -5,6 +5,7 @@ import re
 import time
 import itertools
 import nltk
+from nltk.tokenize import TreebankWordTokenizer
 import progressbar
 import h5py
 import json
@@ -21,9 +22,12 @@ def load_data(path):
 
 stanford_jar_path = '/work/stanford-corenlp-full-2015-04-20/stanford-corenlp-3.5.2.jar'
 
-def build_tokenizer(stanford_jar_path=stanford_jar_path):
-    return nltk.tokenize.StanfordTokenizer(
-            path_to_jar=stanford_jar_path)
+def build_tokenizer(tokenizer='stanford'):
+    if tokenizer == 'stanford':
+        return nltk.tokenize.StanfordTokenizer(
+                path_to_jar=stanford_jar_path)
+    else:
+        return TreebankWordTokenizer()
 
 def is_word(token):
     return re.match(r'[\w.-]{2,}$', token)
@@ -72,9 +76,10 @@ def replace_characters(token, index_to_char, n=1, seed=17):
 #
 # [1] http://www.ravi.io/language-word-lengths
 
-def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=1000, downsample=True):
-    tokenizer = build_tokenizer()
-    tokens = [t.lower() for t in tokenizer.tokenize(data)]
+def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=1000, downsample=True, tokenizer=None):
+    print('tokenizing')
+    toker = build_tokenizer(tokenizer=tokenizer)
+    tokens = [t.lower() for t in toker.tokenize(data)]
 
     token_vocab = set()
 
@@ -83,10 +88,12 @@ def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=10
     token_freqs = defaultdict(int)
     token_index = defaultdict(list)
 
+    print('building index #1')
     for i, token in enumerate(tokens):
         token_freqs[token] += 1
         token_index[token].append(i)
 
+    print('sorting terms by frequency')
     most_to_least_freq = sorted(token_freqs.iteritems(),
             key=itemgetter(1), reverse=True)
 
@@ -94,6 +101,7 @@ def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=10
     token_to_index = {}
     index_to_token = {}
 
+    print('building index #2')
     for token, freq in most_to_least_freq:
         if freq < min_freq or len(token_vocab) == max_features:
             del token_index[token]
@@ -110,6 +118,7 @@ def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=10
 
     # Downsample a random subset of min_freq indices from the index.
     if downsample:
+        print('downsampling')
         rng = random.Random(17)
         for token in token_index.keys():
             indices = token_index[token]
@@ -146,12 +155,16 @@ def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=10
         ' ', progressbar.ETA()],
         maxval=maxval).start()
 
+    print('building X, y ')
+
+    X = []
+    y = []
     n = 0
+    j = 0
 
     for token in token_index.keys():
         for i in token_index[token]:
             pbar.update(n+1)
-            n += 1
 
             ok_window = build_window(tokens, i, token,
                     window_size=window_size, token_pos=token_pos)
@@ -166,12 +179,11 @@ def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=10
             X.append([char_to_index[ch] for ch in corrupt_window])
             y.append(token_to_index[token])
 
+            n += 1
+
     pbar.finish()
 
-    X = np.array(X)
-    y = np.array(y)
-
-    return X, y, index_to_token, index_to_char
+    return np.array(X), np.array(y), index_to_token, index_to_char
 
 def context_is_complete(tokens, n):
     context = ' '.join(tokens)
