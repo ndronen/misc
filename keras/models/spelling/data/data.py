@@ -220,8 +220,30 @@ def build_window(tokens, i, token, window_size=100, token_pos=40):
     return leading + ' ' + token + ' ' + trailing
 
 def save_data(X, y, train_size, valid_size, output_prefix='data-', index_to_token=None, index_to_char=None):
-    X_train, X_other, y_train, y_other = train_test_split(X, y, train_size=train_size)
-    X_valid, X_test, y_valid, y_test = train_test_split(X_other, y_other, train_size=valid_size)
+    if train_size % 2 != 0:
+        raise ValueError('train_size ({train_size}) must be even'.format(
+            train_size=train_size))
+    if valid_size % 2 != 0:
+        raise ValueError('valid_size ({valid_size}) must be even'.format(
+            valid_size=valid_size))
+
+    evens = np.arange(0, len(X), 2)
+    train_evens, other_evens = train_test_split(evens,
+            train_size=train_size/2, random_state=17)
+    valid_evens, test_evens = train_test_split(other_evens,
+            train_size=valid_size/2, random_state=17)
+
+    train_i = np.concatenate([train_evens, train_evens+1])
+    valid_i = np.concatenate([valid_evens, valid_evens+1])
+    test_i = np.concatenate([test_evens, test_evens+1])
+
+    X_train = X[train_i]
+    X_valid = X[valid_i]
+    X_test = X[test_i]
+
+    y_train = y[train_i]
+    y_valid = y[valid_i]
+    y_test = y[test_i]
 
     f_train = h5py.File(output_prefix + 'train.h5', 'w')
     f_train.create_dataset('X', data=X_train, dtype=int)
@@ -238,11 +260,30 @@ def save_data(X, y, train_size, valid_size, output_prefix='data-', index_to_toke
     f_test.create_dataset('y', data=y_test, dtype=int)
     f_test.close()
 
-
     indices = {}
 
     if index_to_token is not None:
         indices['token'] = index_to_token
+
+        tokens = index_to_token.values()
+        min_distance = defaultdict(lambda: np.inf)
+
+        for i,token in enumerate(tokens):
+            for j,other_token in enumerate(tokens):
+                if i == j:
+                    continue
+                dist = Levenshtein.distance(token, other_token)
+                if dist < min_distance[token]:
+                    min_distance[token] = dist
+                    nearest_token[token] = other_token
+
+        min_distance_ordered = sorted(min_distance.iteritems(),
+                key=itemgetter(1), reverse=True)
+
+        indices['min_distance'] = min_distance
+        indices['min_distance_ordered'] = min_distance_ordered
+        indices['nearest_token'] = nearest_token
+
         names = sorted(index_to_token.iteritems(), key=itemgetter(0))
         names = [n[1] for n in names]
         target_data = {}
@@ -256,4 +297,3 @@ def save_data(X, y, train_size, valid_size, output_prefix='data-', index_to_toke
 
     if len(indices):
         cPickle.dump(indices, open(output_prefix + 'index.pkl', 'w'))
-
