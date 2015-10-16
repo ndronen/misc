@@ -30,7 +30,10 @@ export MANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
 export LD_LIBRARY_PATH=/usr/local/cuda-7.0/lib64:~/proj/torch/install/lib # :~/proj/torch/install/lib/lua/5.1/
 export BYOBU_PREFIX=$(brew --prefix)
 
-. /export/home/ndronen/proj/torch/install/bin/torch-activate
+if [ -e /export/home/ndronen/proj/torch/install/bin/torch-activate ]
+then
+    . /export/home/ndronen/proj/torch/install/bin/torch-activate
+fi
 
 export PYTHONUNBUFFERED=1
 #export CHAINER_SEED=1
