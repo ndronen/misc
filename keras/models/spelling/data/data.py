@@ -294,7 +294,7 @@ def save_data(X, y, train_size, valid_size, output_prefix='data-', index_to_toke
         min_distance_ordered = sorted(min_distance.iteritems(),
                 key=itemgetter(1), reverse=True)
 
-        indices['min_distance'] = min_distance
+        indices['min_distance'] = dict(min_distance)
         indices['min_distance_ordered'] = min_distance_ordered
         indices['nearest_token'] = nearest_token
 
