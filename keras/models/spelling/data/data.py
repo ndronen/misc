@@ -11,6 +11,7 @@ import h5py
 import json
 import cPickle
 import random
+import Levenshtein
 from sklearn.cross_validation import train_test_split
 
 import numpy as np
@@ -279,6 +280,7 @@ def save_data(X, y, train_size, valid_size, output_prefix='data-', index_to_toke
 
         tokens = index_to_token.values()
         min_distance = defaultdict(lambda: np.inf)
+        nearest_token = {}
 
         for i,token in enumerate(tokens):
             for j,other_token in enumerate(tokens):
