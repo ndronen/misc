@@ -32,7 +32,6 @@ class Layer(object):
     def __init__(self, activation, nvis, nhid, learning_rate):
         self.activation = activation
         self.W = np.random.uniform(0, 0.1, size=(nvis, nhid))
-        #self.b = np.random.normal(size=(nhid))
         self.lr = learning_rate
         self.output = None
 
@@ -41,29 +40,36 @@ class Layer(object):
         self.output = self.activation(np.dot(x, self.W))
         return self.output
 
+    '''
     def backward(self, y, cost):
         error = cost(y, self.output)
         self.W = self.W - self.lr * self.gradient(cost)
+    '''
 
 nvis = 2
-#nhid = 1
 nout = 1
 
 # Simple linear regression.
 model = Layer(activation=identity, nvis=nvis, nhid=nout, learning_rate=0.1)
-# model.W.shape = (2,1)
 
 np.random.seed(17)
 n_examples = 1000
 x = np.random.normal(size=(n_examples,nvis))
 y = (x[:, 0] - 2*x[:, 1]).reshape((n_examples,nout))
+y += np.random.uniform(-0.05, 0.05, size=y.shape)
 
-for epoch in six.moves.range(100):
+for epoch in six.moves.range(1000):
     y_hat = model.forward(x)
+
     assert y.shape == y_hat.shape
+
+    # Hard-coded cost function.
     mse = np.sum((y - y_hat)**2)/len(x)
-    # x.shape (1000,2)
-    # (y_hat - y).shape (1000,1)
+
+    # Hard-coded gradient computation.
     grad = np.dot(x.T, y_hat - y)
-    print('mse', mse, 'grad', grad.shape, 'W', model.W.shape)
+
+    # Updating parameters outside of the layer.
     model.W = model.W - model.lr * grad/float(len(x))
+
+print(np.concatenate([y, y_hat], axis=1))
