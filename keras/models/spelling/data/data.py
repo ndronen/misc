@@ -1,6 +1,7 @@
 from collections import defaultdict
 from operator import itemgetter
 import string
+import codecs
 import re
 import time
 import itertools
@@ -18,7 +19,7 @@ import numpy as np
 from numpy.random import RandomState
 
 def load_data(path):
-    with open(path) as f:
+    with codecs.open(path, encoding='utf-8') as f:
         return f.read().replace('\n', ' ')
 
 stanford_jar_path = '/work/stanford-corenlp-full-2015-04-20/stanford-corenlp-3.5.2.jar'
@@ -65,36 +66,34 @@ def replace_characters(token, index_to_char, n=1, seed=17):
     new_token = unicode(token[0:idx-1] + ch + token[idx:])
     return new_token
 
+def tokenize(data, tokenizer=None):
+    toker = build_tokenizer(tokenizer=tokenizer)
+    return [t.lower() for t in toker.tokenize(data)]
 
+# TODO: break build_X_y into several smaller functions.
+#
 # Data needs to be converted to input and targets.  An input is a window
 # of k characters around a (possibly corrupted) token t.  A target is a
 # one-hot vector representing w.  In English, the average word length
 # is a little more than 5 and there are almost no words longer than 20
-# characters [1].  Initially we will use a window of 100 characters.
+# characters [7].  Initially we will use a window of 100 characters.
 # Since words vary in length, the token t will not be centered in the
 # input.  Instead it will start at the 40th position of the window.
 # This will (?) make the task easier to learn.
 #
 # [1] http://www.ravi.io/language-word-lengths
-
-def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=1000, downsample=True, tokenizer=None):
-    print('tokenizing')
-    toker = build_tokenizer(tokenizer=tokenizer)
-    tokens = [t.lower() for t in toker.tokenize(data)]
-
-    token_vocab = set()
-
+#
+def build_index(token_seq, min_freq=100, max_features=1000, downsample=True):
     # Limit vocabulary to the max_features-most frequent tokens that
     # occur between min_freq and max_freq times.
+    token_vocab = set()
     token_freqs = defaultdict(int)
-    token_index = defaultdict(list)
+    token_seq_index = defaultdict(list)
 
-    print('building index #1')
-    for i, token in enumerate(tokens):
+    for i, token in enumerate(token_seq):
         token_freqs[token] += 1
-        token_index[token].append(i)
+        token_seq_index[token].append(i)
 
-    print('sorting terms by frequency')
     most_to_least_freq = sorted(token_freqs.iteritems(),
             key=itemgetter(1), reverse=True)
 
@@ -102,14 +101,13 @@ def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=10
     token_to_index = {}
     index_to_token = {}
 
-    print('building index #2')
     for token, freq in most_to_least_freq:
         if freq < min_freq or len(token_vocab) == max_features:
-            del token_index[token]
+            del token_seq_index[token]
             continue
 
         if not is_word(token) or len(token) == 1:
-            del token_index[token]
+            del token_seq_index[token]
             continue
 
         token_vocab.add(token)
@@ -119,12 +117,10 @@ def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=10
 
     # Downsample a random subset of min_freq indices from the index.
     if downsample:
-        print('downsampling')
         rng = random.Random(17)
-        for token in token_index.keys():
-            indices = token_index[token]
-            token_index[token] = random.sample(indices, min_freq)
-
+        for token in token_seq_index.keys():
+            indices = token_seq_index[token]
+            token_seq_index[token] = random.sample(indices, min_freq)
 
     char_vocab = set([u' '])
 
@@ -134,40 +130,64 @@ def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=10
         for ch in charlist:
             char_vocab.add(unicode(str(ch)))
 
-    for token in tokens:
+    for token in token_seq:
         for ch in token:
-            char_vocab.add(ch)
+            char_vocab.add(unicode(ch))
 
     char_to_index = dict((c,i) for i,c in enumerate(char_vocab))
-    index_to_char = dict((i,c) for i,c in enumerate(char_vocab))
 
-    X = []
-    y = []
+    return token_seq_index, char_to_index, token_to_index
 
+def build_contrasting_dataset(token_seq, token_seq_index, token_to_index, char_to_index, window_size=100, token_pos=40):
+    """
+    Build a window around each token in token_seq.  The surrounding
+    context consists of the leading and trailing characters that are
+    available to fill the window.
+
+    Parameters
+    ------------
+    token_seq : list 
+        A sequence of tokens.
+    token_seq_index : dict of list
+        A mapping from token to indices of occurrences of the token.
+    token_to_index : dict
+        A mapping from token to the index of the token in the vocabulary.
+    char_to_index : dict
+        A mapping from character to the index of the character in the vocabulary.
+    window_size : int
+        The size of the window for each token; includes the length of the token itself.
+    token_pos : int
+        The position at which the token should be placed in the window.
+
+    Returns
+    ---------
+    X : np.ndarray
+        A matrix with even-numbered rows containing examples without
+        a known spelling error and odd-numbered rows containing a
+        deliberately-injected spelling error.
+    y : np.ndarray
+        An array consisting of the indices in the token vocabulary of
+        the correct word for each example.
+    """
     rng = RandomState(seed=17)
 
-    # Build a window around each token.  The surrounding context consists
-    # of the leading and trailing characters that are available to fill
-    # the window.
-
-    maxval = sum([len(token_index[t]) for t in token_index.keys()])
+    maxval = sum([len(token_seq_index[t]) for t in token_seq_index.keys()])
     pbar = progressbar.ProgressBar(term_width=40,
         widgets=[' ', progressbar.Percentage(),
         ' ', progressbar.ETA()],
         maxval=maxval).start()
 
-    print('building X, y ')
-
     X = []
     y = []
     n = 0
-    j = 0
 
-    for token in token_index.keys():
-        for i in token_index[token]:
+    index_to_char = dict((i,c) for c,i in char_to_index.iteritems())
+
+    for token in token_seq_index.keys():
+        for i in token_seq_index[token]:
             pbar.update(n+1)
 
-            ok_window = build_window(tokens, i, token,
+            ok_window = build_window(token_seq, i, token,
                     window_size=window_size, token_pos=token_pos)
             X.append([char_to_index[ch] for ch in ok_window])
             y.append(token_to_index[token])
@@ -175,7 +195,7 @@ def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=10
             corruptor = rng.choice([insert_characters, delete_characters,
                 replace_characters])
             corrupt_token = corruptor(token, index_to_char, n=1, seed=rng)
-            corrupt_window = build_window(tokens, i, corrupt_token,
+            corrupt_window = build_window(token_seq, i, corrupt_token,
                     window_size=window_size, token_pos=token_pos)
             X.append([char_to_index[ch] for ch in corrupt_window])
             y.append(token_to_index[token])
@@ -184,7 +204,49 @@ def build_X_y(data, window_size=100, token_pos=40, min_freq=100, max_features=10
 
     pbar.finish()
 
-    return np.array(X), np.array(y), index_to_token, index_to_char
+    return np.array(X), np.array(y)
+
+def build_error_token_dataset(token_seq, token_seq_index, token_to_index, char_to_index, window_size=100, token_pos=40):
+    # Build a window around each token.  The surrounding context consists
+    # of the leading and trailing characters that are available to fill
+    # the window.
+
+    rng = RandomState(seed=17)
+
+    maxval = sum([len(token_seq_index[t]) for t in token_seq_index.keys()])
+    pbar = progressbar.ProgressBar(term_width=40,
+        widgets=[' ', progressbar.Percentage(),
+        ' ', progressbar.ETA()],
+        maxval=maxval).start()
+
+    X = []
+    y = []
+    n = 0
+
+    index_to_char = dict((i,c) for c,i in char_to_index.iteritems())
+
+    for token in token_seq_index.keys():
+        for i in token_seq_index[token]:
+            pbar.update(n+1)
+
+            ok_window = build_window(token_seq, i, token,
+                    window_size=window_size, token_pos=token_pos)
+            X.append([char_to_index[ch] for ch in ok_window])
+            y.append(token_to_index[token])
+
+            corruptor = rng.choice([insert_characters, delete_characters,
+                replace_characters])
+            corrupt_token = corruptor(token, index_to_char, n=1, seed=rng)
+            corrupt_window = build_window(token_seq, i, corrupt_token,
+                    window_size=window_size, token_pos=token_pos)
+            X.append([char_to_index[ch] for ch in corrupt_window])
+            y.append(token_to_index[token])
+
+            n += 1
+
+    pbar.finish()
+
+    return np.array(X), np.array(y)
 
 def context_is_complete(tokens, n):
     context = ' '.join(tokens)
