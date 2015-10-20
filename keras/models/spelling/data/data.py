@@ -147,22 +147,42 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
         The maximum number of occurrences to allow for any token.  Only
         used if > 0.
     """
+    passes = 3
+    if downsample > 0:
+        passes += 1
+
     token_vocab = set()
     token_freqs = defaultdict(int)
     token_seq_index = defaultdict(list)
 
+    print('pass 1/{passes}: scanning tokens'.format(passes=passes))
+    pbar = progressbar.ProgressBar(term_width=40,
+        widgets=[' ', progressbar.Percentage(),
+        ' ', progressbar.ETA()],
+        maxval=len(token_seq)).start()
+
     for i, token in enumerate(token_seq):
+        pbar.update(i+1)
         token_freqs[token] += 1
         token_seq_index[token].append(i)
+    pbar.finish()
 
+    print('pass 2/{passes}: sorting by frequency'.format(passes=passes))
     most_to_least_freq = sorted(token_freqs.iteritems(),
             key=itemgetter(1), reverse=True)
+    print('')
 
     token_i = 0
     token_to_index = {}
     index_to_token = {}
 
-    for token, freq in most_to_least_freq:
+    print('pass 3/{passes}: removing infrequent tokens'.format(passes=passes))
+    pbar = progressbar.ProgressBar(term_width=40,
+        widgets=[' ', progressbar.Percentage(),
+        ' ', progressbar.ETA()],
+        maxval=len(most_to_least_freq)).start()
+    for i, (token, freq) in enumerate(most_to_least_freq):
+        pbar.update(i+1)
         if freq < min_freq or len(token_vocab) == max_features:
             del token_seq_index[token]
             continue
@@ -175,12 +195,20 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
         token_to_index[token] = token_i
         index_to_token[token_i] = token
         token_i += 1
+    pbar.finish()
 
     if downsample > 0:
+        print('pass 4/{passes}: downsampling'.format(passes=passes))
+        pbar = progressbar.ProgressBar(term_width=40,
+            widgets=[' ', progressbar.Percentage(),
+            ' ', progressbar.ETA()],
+            maxval=len(token_seq_index.)).start()
         rng = random.Random(17)
-        for token in token_seq_index.keys():
+        for i, token in enumerate(token_seq_index.keys()):
+            pbar.update(i+1)
             indices = token_seq_index[token]
             token_seq_index[token] = random.sample(indices, downsample)
+        pbar.finish()
 
     char_vocab = set([u' '])
 
