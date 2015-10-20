@@ -5,18 +5,19 @@ import codecs
 import re
 import time
 import itertools
-import nltk
-from nltk.tokenize import TreebankWordTokenizer
 import progressbar
 import h5py
 import json
 import cPickle
 import random
 import Levenshtein
+import enchant
 from sklearn.cross_validation import train_test_split
 
 import numpy as np
 from numpy.random import RandomState
+
+import nltk
 
 # Data needs to be converted to input and targets.  An input is a window
 # of k characters around a (possibly corrupted) token t.  A target is a
@@ -40,7 +41,7 @@ def build_tokenizer(tokenizer='stanford'):
         return nltk.tokenize.StanfordTokenizer(
                 path_to_jar=stanford_jar_path)
     else:
-        return TreebankWordTokenizer()
+        return nltk.tokenize.TreebankWordTokenizer()
 
 def is_word(token):
     return re.match(r'[\w.-]{2,}$', token)
@@ -197,6 +198,57 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
     char_to_index['NONCE'] = 0
 
     return token_seq_index, char_to_index, token_to_index
+
+def min_dictionary_edit_distance(tokens, dictionary):
+    """
+    Find the edit distance from each of a list of tokens to the nearest
+    word in the dictionary (where the dictionary presumably defines
+    nearness as edit distance).
+
+    Parameters
+    -----------
+    tokens : list
+        A list of tokens.
+    dictionary : enchant.Dict
+        A dictionary.
+
+    Returns 
+    ----------
+    distance : dict
+        A dictionary with tokens as keys and (distance,token) as values.
+    """
+    pbar = progressbar.ProgressBar(term_width=40,
+        widgets=[' ', progressbar.Percentage(),
+        ' ', progressbar.ETA()],
+        maxval=len(tokens)).start()
+
+    distances = []
+    for i, t in enumerate(tokens):
+        pbar.update(i+1)
+        suggestions = [s.lower() for s in dictionary.suggest(t)]
+        # If the token itself is the top suggestion, then compute
+        # the edit distance to the next suggestion.  We should not
+        # return an edit distance of 0 for any token.
+        suggestion = suggestions[0]
+        while suggestion == t:
+            suggestions.pop(0)
+            suggestion = suggestions[0]
+            if ' ' in suggestion or '-' in suggestion:
+                # For this study, we don't want to accept suggestions
+                # that split a word (e.g. 'antelope' -> 'ant elope'.
+                suggestion = t
+            if suggestion == t + 's':
+                # This is probably the plural of t.  Since the edit
+                # distance of most nouns to their plural is 1, exclude
+                # it.
+                suggestion = t
+            
+        distance = (Levenshtein.distance(t, suggestion), suggestion)
+        distances.append(distance)
+
+    pbar.finish()
+    assert min([d[0] for d in distances]) == 1
+    return dict(zip(tokens, distances))
 
 def build_contrasting_cases_dataset(token_seq, token_seq_index, token_to_index, char_to_index, window_size=100, token_pos=40, seed=17):
     """
