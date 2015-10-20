@@ -152,10 +152,21 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
         passes += 1
 
     term_vocab = set()
+    char_vocab = set([u' '])
     term_freqs = defaultdict(int)
     token_seq_index = defaultdict(list)
+    below_min_freq = set()
 
-    print('pass 1 of {passes}: scanning tokens'.format(passes=passes))
+    # Include most of the characters we care about.  We add any remaining
+    # characters after this loop.
+    for charlist in [string.ascii_letters, string.punctuation, range(10)]:
+        for ch in charlist:
+            char_vocab.add(unicode(str(ch)))
+
+    pass_num = 1
+    print('pass {pass_num} of {passes}: scanning tokens'.format(
+        pass_num=pass_num, passes=passes))
+    pass_num += 1
     pbar = progressbar.ProgressBar(term_width=40,
         widgets=[' ', progressbar.Percentage(),
         ' ', progressbar.ETA()],
@@ -163,35 +174,47 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
 
     for i, token in enumerate(token_seq):
         pbar.update(i+1)
+
+        if not is_word(token) or len(token) == 1:
+            continue
+
+        if term_freqs[token] == 0:
+            below_min_freq.add(token)
+        elif term_freqs[token] > min_freq:
+            try:
+                below_min_freq.remove(token)
+            except KeyError:
+                pass
+
         term_freqs[token] += 1
         token_seq_index[token].append(i)
+
+        for ch in token:
+            char_vocab.add(unicode(ch))
+
     pbar.finish()
 
     print('# of terms: ' + str(len(term_freqs)))
 
-    print('pass 2 of {passes}: removing infrequent terms'.format(passes=passes))
+    print('pass {pass_num} of {passes}: removing infrequent terms'.format(
+        pass_num=pass_num, passes=passes))
+    pass_num += 1
     pbar = progressbar.ProgressBar(term_width=40,
         widgets=[' ', progressbar.Percentage(),
         ' ', progressbar.ETA()],
         maxval=len(term_freqs)).start()
-    term_freqs_items = term_freqs.items()
-    for i, (term, freq) in enumerate(term_freqs.items()):
+
+    for i, term in enumerate(below_min_freq):
         pbar.update(i+1)
-
-        if freq < min_freq:
-            del term_freqs[term]
-            del token_seq_index[term]
-            continue
-
-        if not is_word(term) or len(term) == 1:
-            del term_freqs[term]
-            del term_seq_index[term]
-            continue
+        del term_freqs[term]
+        del token_seq_index[term]
 
     pbar.finish()
     print('# of terms: ' + str(len(term_freqs)))
 
-    print('pass 3 of {passes}: sorting terms by frequency'.format(passes=passes))
+    print('pass {pass_num} of {passes}: sorting terms by frequency'.format(
+        pass_num=pass_num, passes=passes))
+    pass_num += 1
     most_to_least_freq = sorted(term_freqs.iteritems(),
             key=itemgetter(1), reverse=True)
     print('')
@@ -200,7 +223,9 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
     term_to_index = {}
     index_to_term = {}
 
-    print('pass 4 of {passes}: building term index'.format(passes=passes))
+    print('pass {pass_num} of {passes}: building term index'.format(
+        pass_num=pass_num, passes=passes))
+    pass_num += 1
     pbar = progressbar.ProgressBar(term_width=40,
         widgets=[' ', progressbar.Percentage(),
         ' ', progressbar.ETA()],
@@ -221,7 +246,9 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
     pbar.finish()
 
     if downsample > 0:
-        print('pass 5 of {passes}: downsampling'.format(passes=passes))
+        print('pass {pass_num} of {passes}: downsampling'.format(
+            pass_num=pass_num, passes=passes))
+        pass_num += 1
         pbar = progressbar.ProgressBar(term_width=40,
             widgets=[' ', progressbar.Percentage(),
             ' ', progressbar.ETA()],
@@ -232,18 +259,6 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
             indices = token_seq_index[token]
             token_seq_index[token] = random.sample(indices, downsample)
         pbar.finish()
-
-    char_vocab = set([u' '])
-
-    # Include most of the characters we care about.  We add any remaining
-    # characters after this loop.
-    for charlist in [string.ascii_letters, string.punctuation, range(10)]:
-        for ch in charlist:
-            char_vocab.add(unicode(str(ch)))
-
-    for token in token_seq:
-        for ch in token:
-            char_vocab.add(unicode(ch))
 
     char_to_index = dict((c,i+1) for i,c in enumerate(char_vocab))
     char_to_index['NONCE'] = 0
