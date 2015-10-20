@@ -132,30 +132,30 @@ def tokenize(data, tokenizer=None):
 
 def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
     """
-    Builds character and token indexes for a tokenized text.
+    Builds character and term indexes from a sequence of tokens.
 
     Parameters
     -----------
     token_seq : list
         A list of tokens from some text.
     min_freq : int
-        The minimum number of occurrences a token must have to be included
+        The minimum number of occurrences a term must have to be included
         in the index.
     max_features : int
-        The maximum number of tokens to include in the token index.
+        The maximum number of terms to include in the term index.
     downsample : int
-        The maximum number of occurrences to allow for any token.  Only
+        The maximum number of occurrences to allow for any term.  Only
         used if > 0.
     """
-    passes = 3
+    passes = 4
     if downsample > 0:
         passes += 1
 
-    token_vocab = set()
-    token_freqs = defaultdict(int)
+    term_vocab = set()
+    term_freqs = defaultdict(int)
     token_seq_index = defaultdict(list)
 
-    print('pass 1/{passes}: scanning tokens'.format(passes=passes))
+    print('pass 1 of {passes}: scanning tokens'.format(passes=passes))
     pbar = progressbar.ProgressBar(term_width=40,
         widgets=[' ', progressbar.Percentage(),
         ' ', progressbar.ETA()],
@@ -163,46 +163,68 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
 
     for i, token in enumerate(token_seq):
         pbar.update(i+1)
-        token_freqs[token] += 1
+        term_freqs[token] += 1
         token_seq_index[token].append(i)
     pbar.finish()
 
-    print('pass 2/{passes}: sorting by frequency'.format(passes=passes))
-    most_to_least_freq = sorted(token_freqs.iteritems(),
+    print('# of terms: ' + str(len(term_freqs)))
+
+    print('pass 2 of {passes}: removing infrequent terms'.format(passes=passes))
+    pbar = progressbar.ProgressBar(term_width=40,
+        widgets=[' ', progressbar.Percentage(),
+        ' ', progressbar.ETA()],
+        maxval=len(term_freqs)).start()
+    for i, (term, freq) in enumerate(term_freqs.keys()):
+        pbar.update(i+1)
+
+        if freq < min_freq:
+            del term_freqs[term]
+            del token_seq_index[term]
+            continue
+
+        if not is_word(term) or len(term) == 1:
+            del term_freqs[term]
+            del term_seq_index[term]
+            continue
+
+    pbar.finish()
+    print('# of terms: ' + str(len(term_freqs)))
+
+    print('pass 3 of {passes}: sorting terms by frequency'.format(passes=passes))
+    most_to_least_freq = sorted(term_freqs.iteritems(),
             key=itemgetter(1), reverse=True)
     print('')
 
-    token_i = 0
-    token_to_index = {}
-    index_to_token = {}
+    term_i = 0
+    term_to_index = {}
+    index_to_term = {}
 
-    print('pass 3/{passes}: removing infrequent tokens'.format(passes=passes))
+    print('pass 4 of {passes}: building term index'.format(passes=passes))
     pbar = progressbar.ProgressBar(term_width=40,
         widgets=[' ', progressbar.Percentage(),
         ' ', progressbar.ETA()],
         maxval=len(most_to_least_freq)).start()
-    for i, (token, freq) in enumerate(most_to_least_freq):
+
+    for i, (term, freq) in enumerate(most_to_least_freq):
         pbar.update(i+1)
-        if freq < min_freq or len(token_vocab) == max_features:
-            del token_seq_index[token]
+
+        if len(term_vocab) == max_features:
+            del token_seq_index[term]
             continue
 
-        if not is_word(token) or len(token) == 1:
-            del token_seq_index[token]
-            continue
+        term_vocab.add(term)
+        term_to_index[term] = term_i
+        index_to_term[term_i] = term 
+        term_i += 1
 
-        token_vocab.add(token)
-        token_to_index[token] = token_i
-        index_to_token[token_i] = token
-        token_i += 1
     pbar.finish()
 
     if downsample > 0:
-        print('pass 4/{passes}: downsampling'.format(passes=passes))
+        print('pass 5 of {passes}: downsampling'.format(passes=passes))
         pbar = progressbar.ProgressBar(term_width=40,
             widgets=[' ', progressbar.Percentage(),
             ' ', progressbar.ETA()],
-            maxval=len(token_seq_index.)).start()
+            maxval=len(token_seq_index)).start()
         rng = random.Random(17)
         for i, token in enumerate(token_seq_index.keys()):
             pbar.update(i+1)
@@ -225,7 +247,7 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
     char_to_index = dict((c,i+1) for i,c in enumerate(char_vocab))
     char_to_index['NONCE'] = 0
 
-    return token_seq_index, char_to_index, token_to_index
+    return token_seq_index, char_to_index, term_to_index
 
 def min_dictionary_edit_distance(tokens, dictionary):
     """
@@ -278,14 +300,14 @@ def min_dictionary_edit_distance(tokens, dictionary):
     assert min([d[0] for d in distances]) == 1
     return dict(zip(tokens, distances))
 
-def build_contrasting_cases_dataset(token_seq, token_seq_index, token_to_index, char_to_index, window_size=100, token_pos=40, seed=17):
+def build_contrasting_cases_dataset(token_seq, token_seq_index, term_to_index, char_to_index, window_size=100, token_pos=40, seed=17):
     """
     Build a dataset of examples and corresponding targets for training
     a supervised model.  Each example consists of a window around each
     token in `token_seq`.  A window consists of the leading and trailing
     characters around the token that are available to fill the window 
     up to `window_size` characters.  The token is placed in the window
-    at position `token_pos`.  Each target is the index from `token_to_index`
+    at position `token_pos`.  Each target is the index from `term_to_index`
     for the word at `token_pos`.
 
     Parameters
@@ -294,7 +316,7 @@ def build_contrasting_cases_dataset(token_seq, token_seq_index, token_to_index, 
         A sequence of tokens.
     token_seq_index : dict of list
         A mapping from token to indices of occurrences of the token.
-    token_to_index : dict
+    term_to_index : dict
         A mapping from token to the index of the token in the vocabulary.
     char_to_index : dict
         A mapping from character to the index of the character in the vocabulary.
@@ -340,7 +362,7 @@ def build_contrasting_cases_dataset(token_seq, token_seq_index, token_to_index, 
             ok_window = build_window(token_seq, i, token,
                     window_size=window_size, token_pos=token_pos)
             X.append([char_to_index[ch] for ch in ok_window])
-            y.append(token_to_index[token])
+            y.append(term_to_index[token])
             error_type.append('none')
 
             corruptor = rng.choice([insert_characters, delete_characters,
@@ -349,7 +371,7 @@ def build_contrasting_cases_dataset(token_seq, token_seq_index, token_to_index, 
             corrupt_window = build_window(token_seq, i, corrupt_token,
                     window_size=window_size, token_pos=token_pos)
             X.append([char_to_index[ch] for ch in corrupt_window])
-            y.append(token_to_index[token])
+            y.append(term_to_index[token])
             error_type.append(corruptor.__name__)
 
             n += 1
@@ -358,7 +380,7 @@ def build_contrasting_cases_dataset(token_seq, token_seq_index, token_to_index, 
 
     return np.array(X), np.array(y)
 
-def build_error_token_dataset(token_seq_index, token_to_index, char_to_index, n_errors_per_token=10, seed=17):
+def build_error_token_dataset(token_seq_index, term_to_index, char_to_index, n_errors_per_token=10, seed=17):
     """
 
     Parameters
@@ -397,7 +419,7 @@ def build_error_token_dataset(token_seq_index, token_to_index, char_to_index, n_
             corrupt_token = corruptor(token, index_to_char, n=1, seed=rng)
             for i, ch in enumerate(corrupt_token):
                 corrupt_tokens[n, i] = char_to_index[ch]
-            targets[n] = token_to_index[token]
+            targets[n] = term_to_index[token]
             error_type.append(corruptor.__name__)
 
             n += 1
@@ -454,7 +476,7 @@ def build_window(tokens, i, token, window_size=100, token_pos=40):
     trailing = trailing_context(tokens, i, n)
     return leading + ' ' + token + ' ' + trailing
 
-def save_data(X, y, train_size, valid_size, output_prefix='data-', index_to_token=None, index_to_char=None):
+def save_data(X, y, train_size, valid_size, output_prefix='data-', index_to_term=None, index_to_char=None):
     if train_size % 2 != 0:
         raise ValueError('train_size ({train_size}) must be even'.format(
             train_size=train_size))
@@ -497,10 +519,10 @@ def save_data(X, y, train_size, valid_size, output_prefix='data-', index_to_toke
 
     indices = {}
 
-    if index_to_token is not None:
-        indices['token'] = index_to_token
+    if index_to_term is not None:
+        indices['term'] = index_to_term
 
-        tokens = index_to_token.values()
+        tokens = index_to_term.values()
         min_distance = defaultdict(lambda: np.inf)
         nearest_token = {}
 
@@ -520,7 +542,7 @@ def save_data(X, y, train_size, valid_size, output_prefix='data-', index_to_toke
         indices['min_distance_ordered'] = min_distance_ordered
         indices['nearest_token'] = nearest_token
 
-        names = sorted(index_to_token.iteritems(), key=itemgetter(0))
+        names = sorted(index_to_term.iteritems(), key=itemgetter(0))
         names = [n[1] for n in names]
         target_data = {}
         target_data['y'] = {}
