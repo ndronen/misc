@@ -174,7 +174,8 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
         widgets=[' ', progressbar.Percentage(),
         ' ', progressbar.ETA()],
         maxval=len(term_freqs)).start()
-    for i, (term, freq) in enumerate(term_freqs.iteritems()):
+    term_freqs_items = term_freqs.items()
+    for i, (term, freq) in enumerate(term_freqs.items()):
         pbar.update(i+1)
 
         if freq < min_freq:
