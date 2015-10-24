@@ -8,7 +8,7 @@ from nick.utils import ModelConfig, load_model_data
 from keras.utils.np_utils import to_categorical
 from sklearn import metrics
 
-def load_model(model_dir, input_file_arg='validation_file'):
+def load_model(model_dir, input_file_arg='validation_file', input_file=None):
     args_json = json.load(open(model_dir + '/args.json'))
     model_json = json.load(open(model_dir + '/model.json'))
     model_json.update(args_json)
@@ -17,7 +17,11 @@ def load_model(model_dir, input_file_arg='validation_file'):
         for k,v in model_json['model_cfg']:
             model_json[k] = v
 
-    f = h5py.File(model_json[input_file_arg])
+    if input_file is not None:
+        input_file_path = input_file
+    else:
+        input_file_path = model_json[input_file_arg]
+    f = h5py.File(input_file_path)
     datasets = [f[d].value.astype(np.int32) for d in model_json['data_name']]
     for i,d in enumerate(datasets):
         if d.ndim == 1:
@@ -42,7 +46,7 @@ def load_model(model_dir, input_file_arg='validation_file'):
     model = build_model(model_cfg)
 
     # Load the saved weights.
-    model.load_weights(model_dir + '/model.h5')
+    #model.load_weights(model_dir + '/model.h5')
 
     results = {
             "model": model,
@@ -71,19 +75,19 @@ def precision_recall_fscore_support(target, pred, beta=1.0, average='weighted'):
         prfs[-1] = len(target)
     return prfs
 
-def predict_with_absolute_threshold(probs, target, current_word_target, threshold=0.7):
+def predict_with_absolute_threshold(probs, target, threshold=0.7):
     preds = np.argmax(probs, axis=1)
-    preds_with_thresh = np.zeros_like(preds)
+    preds_with_thresh = []
+    indices_used = []
 
     for i in np.arange(0, len(preds)):
         pred = preds[i]
         prob = probs[i]
-        if max(prob) < threshold:
-            preds_with_thresh[i] = current_word_target[i]
-        else:
-            preds_with_thresh[i] = np.argmax(prob)
+        if max(prob) >= threshold:
+            preds_with_thresh.append(np.argmax(prob))
+            indices_used.append(i)
 
-    return preds_with_thresh
+    return np.array(preds_with_thresh), np.array(indices_used)
 
 def predict_with_min_margin_top_two(probs, target, current_word_target, margin=0.5):
     preds = np.argmax(probs, axis=1)
