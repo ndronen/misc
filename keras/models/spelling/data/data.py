@@ -1,5 +1,6 @@
 from collections import defaultdict
 from operator import itemgetter
+import six
 import string
 import codecs
 import re
@@ -53,9 +54,10 @@ def insert_characters(token, index_to_char, n=1, seed=17):
         rng = RandomState(seed)
 
     new_token = token
-    idx = rng.randint(len(token))
-    ch = index_to_char[rng.randint(len(index_to_char))]
-    new_token = unicode(token[0:idx] + ch + token[idx:])
+    for i in six.moves.range(n):
+        idx = rng.randint(len(new_token))
+        ch = index_to_char[rng.randint(len(index_to_char))]
+        new_token = unicode(new_token[0:idx] + ch + new_token[idx:])
     return new_token
 
 def delete_characters(token, index_to_char, n=1, seed=17):
@@ -64,8 +66,16 @@ def delete_characters(token, index_to_char, n=1, seed=17):
     else:
         rng = RandomState(seed)
 
-    idx = max(1, rng.randint(len(token)))
-    new_token = unicode(token[0:idx-1] + token[idx:])
+    new_token = token
+    if n > len(new_token):
+        n = len(new_token) - 1
+    for i in six.moves.range(n):
+        try:
+            idx = max(1, rng.randint(len(new_token)))
+            new_token = unicode(new_token[0:idx-1] + new_token[idx:])
+        except ValueError, e:
+            print('new_token', new_token, len(new_token))
+            raise e
     return new_token
 
 def replace_characters(token, index_to_char, n=1, seed=17):
@@ -75,10 +85,10 @@ def replace_characters(token, index_to_char, n=1, seed=17):
         rng = RandomState(seed)
 
     new_token = token
-    while new_token == token:
-        idx = max(1, rng.randint(len(token)))
+    for i in six.moves.range(n):
+        idx = max(1, rng.randint(len(new_token)))
         ch = index_to_char[rng.randint(len(index_to_char))]
-        new_token = unicode(token[0:idx-1] + ch + token[idx:])
+        new_token = unicode(new_token[0:idx-1] + ch + new_token[idx:])
     return new_token
 
 def transpose_characters(token, index_to_char, n=1, seed=17):
@@ -92,13 +102,13 @@ def transpose_characters(token, index_to_char, n=1, seed=17):
         return token
 
     new_token = token
-    while new_token == token:
-        idx = max(1, rng.randint(len(token)))
+    for i in six.moves.range(n):
+        idx = max(1, rng.randint(len(new_token)))
         neighbor = 0
         if idx == 0:
             neighbor == 1
-        elif idx == len(token) - 1:
-            neighbor = len(token) - 2
+        elif idx == len(new_token) - 1:
+            neighbor = len(new_token) - 2
         else:
             if rng.uniform() > 0.5:
                 neighbor = idx + 1
@@ -106,7 +116,7 @@ def transpose_characters(token, index_to_char, n=1, seed=17):
                 neighbor = idx - 1
         left = min(idx, neighbor) 
         right = max(idx, neighbor)
-        new_token = unicode(token[0:left] + token[right] + token[left] + token[right+1:])
+        new_token = unicode(new_token[0:left] + new_token[right] + new_token[left] + new_token[right+1:])
     return new_token
 
 def tokenize(data, tokenizer=None):
@@ -265,66 +275,88 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
 
     return token_seq_index, char_to_index, term_to_index
 
-def min_dictionary_edit_distance(tokens, dictionary):
+def min_dictionary_edit_distance(terms, dictionary):
     """
-    Find the edit distance from each of a list of tokens to the nearest
+    Find the edit distance from each of a list of terms to the nearest
     word in the dictionary (where the dictionary presumably defines
     nearness as edit distance).
 
     Parameters
     -----------
-    tokens : list
-        A list of tokens.
+    terms : list
+        A list of terms.
     dictionary : enchant.Dict
         A dictionary.
 
     Returns 
     ----------
-    distance : dict
-        A dictionary with tokens as keys and (distance,token) as values.
+    distances : dict
+        A dictionary with terms as keys and (distance,term,rank,rejected
+        suggestions) as values.
     """
     pbar = progressbar.ProgressBar(term_width=40,
         widgets=[' ', progressbar.Percentage(),
         ' ', progressbar.ETA()],
-        maxval=len(tokens)).start()
+        maxval=len(terms)).start()
 
-    distances = []
-    for i, t in enumerate(tokens):
+    distances = {}
+    for i, t in enumerate(terms):
         pbar.update(i+1)
         suggestions = [s.lower() for s in dictionary.suggest(t)]
         # If the token itself is the top suggestion, then compute
         # the edit distance to the next suggestion.  We should not
         # return an edit distance of 0 for any token.
-        suggestion = suggestions[0]
-        while suggestion == t:
-            suggestions.pop(0)
-            suggestion = suggestions[0]
-            if ' ' in suggestion or '-' in suggestion:
+        orig_suggestions = list(suggestions)
+        rejected_suggestions = []
+        rank = 0
+        accepted_suggestion = None
+        accepted_suggestion_rank = 0
+        distance = np.inf
+
+        for suggestion in suggestions:
+            rank += 1
+            d = Levenshtein.distance(t, suggestion)
+            if suggestion == t:
+                rejected_suggestions.append((suggestion, d, rank))
+            elif ' ' in suggestion or '-' in suggestion or "'" in suggestion:
                 # For this study, we don't want to accept suggestions
                 # that split a word (e.g. 'antelope' -> 'ant elope'.
-                suggestion = t
-            if suggestion == t + 's':
-                # This is probably the plural of t.  Since the edit
-                # distance of most nouns to their plural is 1, exclude
-                # it.
-                suggestion = t
+                rejected_suggestions.append((suggestion, d, rank))
+            elif suggestion == t + 's' or suggestion + 's' == t:
+                # Exclude singular-plural variants.
+                rejected_suggestions.append((suggestion, d, rank))
+            else:
+                if d < distance:
+                    if accepted_suggestion is not None:
+                        rejected_suggestions.append((accepted_suggestion, distance, rank))
+                    accepted_suggestion = suggestion
+                    accepted_suggestion_rank = rank
+                    distance = d
+                else:
+                    rejected_suggestions.append((suggestion, d, rank))
+
+        distances[t] = {
+                'accepted': accepted_suggestion,
+                'distance': distance,
+                'rank': accepted_suggestion_rank,
+                'rejected': rejected_suggestions
+                }
             
-        distance = (Levenshtein.distance(t, suggestion), suggestion)
-        distances.append(distance)
-
     pbar.finish()
-    assert min([d[0] for d in distances]) == 1
-    return dict(zip(tokens, distances))
 
-def build_contrasting_cases_dataset(token_seq, token_seq_index, term_to_index, char_to_index, window_size=100, token_pos=40, seed=17):
+    return distances
+
+def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_token_length=15, leading_context_size=10, trailing_context_size=10, separator='^', n_examples_per_context=10, n_errors_per_token=[1], n_errors_per_context=[0], seed=17):
     """
-    Build a dataset of examples and corresponding targets for training
-    a supervised model.  Each example consists of a window around each
-    token in `token_seq`.  A window consists of the leading and trailing
-    characters around the token that are available to fill the window 
-    up to `window_size` characters.  The token is placed in the window
-    at position `token_pos`.  Each target is the index from `term_to_index`
-    for the word at `token_pos`.
+    Build a dataset of examples of spelling erors and corresponding
+    corrections for training a supervised spelling correction model.
+    Each example consists of a window around a token in `token_seq`.  
+
+    The error types are (random) insertion, (random) deletion, (random)
+    replacement, and transposition.  (In the future other error types may
+    be added, such as sampling characters from the token itself instead
+    of randomly (for insertion or replacement) and creating errors that
+    are plausible given the layout of a QWERTY keyboard.
 
     Parameters
     ------------
@@ -336,21 +368,40 @@ def build_contrasting_cases_dataset(token_seq, token_seq_index, term_to_index, c
         A mapping from token to the index of the token in the vocabulary.
     char_to_index : dict
         A mapping from character to the index of the character in the vocabulary.
-    window_size : int
+    max_token_length : int
+        The maximum allowed token length for an (example, correction)
+        pair.  Tokens that exceed this limit are ignored and no examples
+        of spelling errors of this token are created.
+    leading_context_size : int
         The size of the window for each token; includes the length of the token itself.
-    token_pos : int
+    trailing_context_size : int
         The position at which the token should be placed in the window.
+    separator : str
+        A string that will be placed immediately before and after the
+        spelling error to separate the error from its leading and
+        trailing context.
+    n_examples_per_context : int
+        The number of examples of errors that will be generated per context.
+    n_errors_per_token : list of int
+        The possible number of errors injected into a word for a training
+        example.  The number of errors injected into a word is sampled from
+        this list for each training example.
+    n_errors_per_context : list of int
+        The possible number of errors injected into the leading and trailing
+        context for a training example.  The number of errors injected into
+        both the leading and trailing context is sampled from this list for
+        each training example.
+    seed : int or np.random.RandomState
+        The initialization for the random number generator.
 
     Returns
     ---------
-    X : np.ndarray
-        A matrix with even-numbered rows containing examples without
-        a known spelling error and odd-numbered rows containing a
-        deliberately-injected spelling error.
-    y : np.ndarray
+    spelling_errors : np.ndarray
+        A matrix of examples of a deliberately-injected spelling error.
+    corrections : np.ndarray
         An array consisting of the indices in the token vocabulary of
         the correct word for each example.
-    error_type : list
+    error_types : list
         A list of the type of error injected into the token.
     """
     if isinstance(seed, RandomState):
@@ -358,43 +409,65 @@ def build_contrasting_cases_dataset(token_seq, token_seq_index, term_to_index, c
     else:
         rng = RandomState(seed=seed)
 
-    maxval = sum([len(token_seq_index[t]) for t in token_seq_index.keys()])
+    n_contexts = sum([len(token_seq_index[t]) for t in token_seq_index.keys() if len(t) <= max_token_length])
+    n_examples = n_examples_per_context * n_contexts
+    max_inserts_per_token = max(n_errors_per_token)
+    max_inserts_per_context = 2*max(n_errors_per_context)
+    max_chars_in_window = leading_context_size + max_token_length + trailing_context_size + 2*len(separator) + max_inserts_per_token + max_inserts_per_context
+    # The "background" on which each context is overlain is a sequence
+    # of spaces; a space represents 'no character'.
+    error_examples = np.zeros((n_examples, max_chars_in_window), dtype=np.int32)
+    error_examples.fill(char_to_index[' '])
+    corrections = np.zeros(n_examples, dtype=np.int32)
+    error_types = []
+
+    print('starting to construct {n_examples} examples'.format(
+            n_examples=n_examples))
+
     pbar = progressbar.ProgressBar(term_width=40,
         widgets=[' ', progressbar.Percentage(),
         ' ', progressbar.ETA()],
-        maxval=maxval).start()
-
-    X = []
-    y = []
-    error_type = []
+        maxval=n_examples).start()
     n = 0
 
     index_to_char = dict((i,c) for c,i in char_to_index.iteritems())
+    if 63 not in index_to_char.keys():
+        # A workaround for now.
+        index_to_char[63] = '^'
 
     for token in token_seq_index.keys():
+        if len(token) > max_token_length:
+            continue
+
         for i in token_seq_index[token]:
-            pbar.update(n+1)
+            for j in six.moves.range(n_examples_per_context):
+                pbar.update(n+1)
+                corruptor = rng.choice([insert_characters, delete_characters,
+                        replace_characters, transpose_characters])
+                n_token_errors = rng.choice(n_errors_per_token)
+                corrupt_token = corruptor(token, index_to_char, n=n_token_errors, seed=rng)
 
-            ok_window = build_window(token_seq, i, token,
-                    window_size=window_size, token_pos=token_pos)
-            X.append([char_to_index[ch] for ch in ok_window])
-            y.append(term_to_index[token])
-            error_type.append('none')
+                n_context_errors = rng.choice(n_errors_per_context)
+                leading = leading_context(token_seq, i, leading_context_size)
+                leading = corruptor(leading, index_to_char, n=n_context_errors, seed=rng)
+                trailing = trailing_context(token_seq, i, trailing_context_size)
+                trailing = corruptor(trailing, index_to_char, n=n_context_errors, seed=rng)
 
-            corruptor = rng.choice([insert_characters, delete_characters,
-                replace_characters])
-            corrupt_token = corruptor(token, index_to_char, n=1, seed=rng)
-            corrupt_window = build_window(token_seq, i, corrupt_token,
-                    window_size=window_size, token_pos=token_pos)
-            X.append([char_to_index[ch] for ch in corrupt_window])
-            y.append(term_to_index[token])
-            error_type.append(corruptor.__name__)
+                window = separator.join([leading, corrupt_token, trailing])
 
-            n += 1
+                for k, ch in enumerate(window):
+                    try:
+                        error_examples[n, k] = char_to_index[ch]
+                    except KeyError, e:
+                        error_examples[n, k] = char_to_index['_']
+                corrections[n] = term_to_index[token]
+                error_types.append(corruptor.__name__)
+
+                n += 1
 
     pbar.finish()
 
-    return np.array(X), np.array(y)
+    return error_examples, corrections, error_types
 
 def build_error_token_dataset(token_seq_index, term_to_index, char_to_index, n_errors_per_token=10, seed=17):
     """
@@ -485,7 +558,7 @@ def trailing_context(tokens, i, n):
         context.append(' ' * n)
     return trim_trailing_context(context, n)
 
-def build_window(tokens, i, token, window_size=100, token_pos=40):
+def build_fixed_width_window(tokens, i, token, window_size=100, token_pos=40):
     leading = leading_context(tokens, i, n=token_pos)
     # Subtract 2 for spaces between leading, token, and trailing.
     n = window_size - token_pos - len(token) - 2
