@@ -13,12 +13,15 @@ def split_data(path, split_size):
     # Find the largest n.
     for k,v in f.iteritems():
         n = max(n, v.value.shape[0])
+    print('n', n)
     
+    os.mkdir(prefix)
+
     # Copy subsequences of the data to smaller files.
     width = int(np.ceil(np.log10(n / split_size)))
     for i,j in enumerate(range(0, n, split_size)):
-        outfile = '{file}-{num:{fill}{width}}.h5'.format(
-                file=prefix, num=i, fill='0', width=width)
+        outfile = '{dir}/{num:{fill}{width}}.h5'.format(
+                dir=prefix, num=i, fill='0', width=width)
         print(outfile)
         fout = h5py.File(outfile, 'w')
         for k,v in f.iteritems():
