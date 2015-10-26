@@ -99,6 +99,8 @@ def get_parser():
             help='Include an sklearn classification report on the validation set at end of each epoch')
     parser.add_argument('--error-classes-only', action='store_true',
             help='Only report on error classes in classification report')
+    parser.add_argument('--validation-freq', default=1, type=int,
+            help='How often to run validation set (only relevant with --extra-train-file')
 
     return parser.parse_args()
 
@@ -179,9 +181,10 @@ def main(args):
 
     if class_weight is not None:
         # Keys are strings in JSON; convert them to int.
-        for k,v in class_weight.iteritems():
-            del class_weight[k]
-            class_weight[int(k)] = v
+        for key in class_weight.keys():
+            v = class_weight[key]
+            del class_weight[key]
+            class_weight[int(key)] = v
 
     logging.debug("n_classes {0} min {1} max {2}".format(
         n_classes, min(y_train), max(y_train)))
@@ -316,15 +319,31 @@ def main(args):
             logging.info("epoch {epoch} iteration {iteration} - loss: {loss} - acc: {acc}".format(
                     epoch=epoch, iteration=iteration, loss=avg_train_loss, acc=avg_train_accuracy))
 
-            val_loss, val_acc = model.evaluate(
-                    x_validation, y_validation_one_hot,
-                    show_accuracy=True,
-                    verbose=0 if args.log else 1)
+            batch += 1
 
-            logging.info("epoch {epoch} iteration {iteration} - val_loss: {val_loss} - val_acc: {val_acc}".format(
-                    epoch=epoch, iteration=iteration, val_loss=val_loss, val_acc=val_acc))
-            epoch_end_logs = {'iteration': iteration, 'val_loss': val_loss, 'val_acc': val_acc}
-            callbacks.on_epoch_end(epoch, epoch_end_logs)
+            # Validation frequency (this if-block) doesn't necessarily
+            # occur in the same iteration as beginning of an epoch
+            # (next if-block), so model.evaluate appears twice here.
+            if (iteration + 1) % args.validation_freq == 0:
+                val_loss, val_acc = model.evaluate(
+                        x_validation, y_validation_one_hot,
+                        show_accuracy=True,
+                        verbose=0 if args.log else 1)
+                logging.info("epoch {epoch} iteration {iteration} - val_loss: {val_loss} - val_acc: {val_acc}".format(
+                        epoch=epoch, iteration=iteration, val_loss=val_loss, val_acc=val_acc))
+                epoch_end_logs = {'iteration': iteration, 'val_loss': val_loss, 'val_acc': val_acc}
+                callbacks.on_epoch_end(epoch, epoch_end_logs)
+
+            if batch % len(args.extra_train_file) == 0:
+                val_loss, val_acc = model.evaluate(
+                        x_validation, y_validation_one_hot,
+                        show_accuracy=True,
+                        verbose=0 if args.log else 1)
+                logging.info("epoch {epoch} iteration {iteration} - val_loss: {val_loss} - val_acc: {val_acc}".format(
+                        epoch=epoch, iteration=iteration, val_loss=val_loss, val_acc=val_acc))
+                epoch_end_logs = {'iteration': iteration, 'val_loss': val_loss, 'val_acc': val_acc}
+                epoch += 1
+                callbacks.on_epoch_end(epoch, epoch_end_logs)
 
             if model.stop_training:
                 logging.info("epoch {epoch} iteration {iteration} - done training".format(
@@ -335,10 +354,6 @@ def main(args):
             x_train, y_train = load_model_data(current_train,
                     args.data_name, args.target_name)
             y_train_one_hot = np_utils.to_categorical(y_train, n_classes)
-
-            batch += 1
-            if batch % len(args.extra_train_file) == 0:
-                epoch += 1
 
             if epoch > args.n_epochs:
                 break
