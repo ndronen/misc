@@ -17,6 +17,7 @@ from sklearn.cross_validation import train_test_split
 
 import numpy as np
 from numpy.random import RandomState
+import pandas as pd
 
 import nltk
 
@@ -275,7 +276,7 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
 
     return token_seq_index, char_to_index, term_to_index
 
-def min_dictionary_edit_distance(terms, dictionary):
+def min_dictionary_edit_distance(terms, dictionary, progress=False):
     """
     Find the edit distance from each of a list of terms to the nearest
     word in the dictionary (where the dictionary presumably defines
@@ -294,14 +295,17 @@ def min_dictionary_edit_distance(terms, dictionary):
         A dictionary with terms as keys and (distance,term,rank,rejected
         suggestions) as values.
     """
-    pbar = progressbar.ProgressBar(term_width=40,
-        widgets=[' ', progressbar.Percentage(),
-        ' ', progressbar.ETA()],
-        maxval=len(terms)).start()
+    pbar = None
+    if progress:
+        pbar = progressbar.ProgressBar(term_width=40,
+            widgets=[' ', progressbar.Percentage(),
+            ' ', progressbar.ETA()],
+            maxval=len(terms)).start()
 
     distances = {}
     for i, t in enumerate(terms):
-        pbar.update(i+1)
+        if progress:
+            pbar.update(i+1)
         suggestions = [s.lower() for s in dictionary.suggest(t)]
         # If the token itself is the top suggestion, then compute
         # the edit distance to the next suggestion.  We should not
@@ -342,11 +346,12 @@ def min_dictionary_edit_distance(terms, dictionary):
                 'rejected': rejected_suggestions
                 }
             
-    pbar.finish()
+    if progress:
+        pbar.finish()
 
     return distances
 
-def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_token_length=15, leading_context_size=10, trailing_context_size=10, separator='^', n_examples_per_context=10, n_errors_per_token=[1], n_errors_per_context=[0], seed=17):
+def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_token_length=15, leading_context_size=10, trailing_context_size=10, leading_separator='{', trailing_separator='}', n_examples_per_context=10, n_errors_per_token=[1], n_errors_per_context=[0], dictionary=enchant.Dict('en_US'), seed=17):
     """
     Build a dataset of examples of spelling erors and corresponding
     corrections for training a supervised spelling correction model.
@@ -376,10 +381,12 @@ def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_
         The size of the window for each token; includes the length of the token itself.
     trailing_context_size : int
         The position at which the token should be placed in the window.
-    separator : str
-        A string that will be placed immediately before and after the
-        spelling error to separate the error from its leading and
-        trailing context.
+    leading_separator : str
+        A string that will be placed immediately before the spelling
+        error to demarcate it from the leading context.
+    trailing_separator : str
+        A string that will be placed immediately after the spelling
+        error to demarcate it from the trailing context.
     n_examples_per_context : int
         The number of examples of errors that will be generated per context.
     n_errors_per_token : list of int
@@ -391,6 +398,8 @@ def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_
         context for a training example.  The number of errors injected into
         both the leading and trailing context is sampled from this list for
         each training example.
+    dictionary : enchant.Dict
+        Dictionary for computing edit distance to nearest term.
     seed : int or np.random.RandomState
         The initialization for the random number generator.
 
@@ -413,13 +422,17 @@ def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_
     n_examples = n_examples_per_context * n_contexts
     max_inserts_per_token = max(n_errors_per_token)
     max_inserts_per_context = 2*max(n_errors_per_context)
-    max_chars_in_window = leading_context_size + max_token_length + trailing_context_size + 2*len(separator) + max_inserts_per_token + max_inserts_per_context
+    max_chars_in_window = leading_context_size + max_token_length + trailing_context_size + len(leading_separator) + len(trailing_separator) + max_inserts_per_token + max_inserts_per_context
     # The "background" on which each context is overlain is a sequence
     # of spaces; a space represents 'no character'.
     error_examples = np.zeros((n_examples, max_chars_in_window), dtype=np.int32)
     error_examples.fill(char_to_index[' '])
     corrections = np.zeros(n_examples, dtype=np.int32)
     error_types = []
+    context_ids = []
+    term_lens = []
+    edit_distance_to_nearest_term = []
+    nearest_term = []
 
     print('starting to construct {n_examples} examples'.format(
             n_examples=n_examples))
@@ -439,6 +452,11 @@ def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_
         if len(token) > max_token_length:
             continue
 
+        term_len = len(token)
+        distances = min_dictionary_edit_distance([token], dictionary)
+        distance = distances[token]['distance']
+        term = distances[token]['accepted']
+
         for i in token_seq_index[token]:
             for j in six.moves.range(n_examples_per_context):
                 pbar.update(n+1)
@@ -453,7 +471,8 @@ def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_
                 trailing = trailing_context(token_seq, i, trailing_context_size)
                 trailing = corruptor(trailing, index_to_char, n=n_context_errors, seed=rng)
 
-                window = separator.join([leading, corrupt_token, trailing])
+                window = ''.join([leading, leading_separator,
+                        corrupt_token, trailing_separator, trailing])
 
                 for k, ch in enumerate(window):
                     try:
@@ -462,62 +481,30 @@ def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_
                         error_examples[n, k] = char_to_index['_']
                 corrections[n] = term_to_index[token]
                 error_types.append(corruptor.__name__)
+                context_ids.append(i)
+                edit_distance_to_nearest_term.append(distance)
+                nearest_term.append(term)
+                term_lens.append(term_len)
 
                 n += 1
 
     pbar.finish()
 
-    return error_examples, corrections, error_types
+    df = pd.DataFrame({
+            'correction': corrections,
+            'error_type': error_types,
+            'context_id': context_ids,
+            'edit_distance_to_nearest_term': edit_distance_to_nearest_term,
+            'nearest': nearest_term,
+            'term_length': term_lens
+            })
+    colwidth = int(np.log10(error_examples.shape[1]))+1
+    colfmt = 'c{col:0' + str(colwidth) + 'd}'
+    for col in np.arange(error_examples.shape[1]):
+        colname = colfmt.format(col=col)
+        df[colname] = error_examples[:, col]
 
-def build_error_token_dataset(token_seq_index, term_to_index, char_to_index, n_errors_per_token=10, seed=17):
-    """
-
-    Parameters
-    -----------
-
-    Returns
-    ----------
-
-    """
-    if isinstance(seed, RandomState):
-        rng = seed
-    else:
-        rng = RandomState(seed=seed)
-
-    n_examples = n_errors_per_token * len(token_seq_index)
-    pbar = progressbar.ProgressBar(term_width=40,
-        widgets=[' ', progressbar.Percentage(),
-        ' ', progressbar.ETA()],
-        maxval=n_examples).start()
-
-    corrupt_tokens = []
-    targets = []
-    error_type = []
-    n = 0
-
-    index_to_char = dict((i,c) for c,i in char_to_index.iteritems())
-
-    longest = max([len(t) for t in token_seq_index.keys()]) + 1
-    corrupt_tokens = np.zeros((n_examples, longest), dtype=int)
-    targets = np.zeros(n_examples, dtype=int)
-
-    for token in token_seq_index.keys():
-        for i in np.arange(n_errors_per_token):
-            corruptor = rng.choice([insert_characters, delete_characters,
-                replace_characters, transpose_characters])
-            corrupt_token = corruptor(token, index_to_char, n=1, seed=rng)
-            for i, ch in enumerate(corrupt_token):
-                corrupt_tokens[n, i] = char_to_index[ch]
-            targets[n] = term_to_index[token]
-            error_type.append(corruptor.__name__)
-
-            n += 1
-            pbar.update(n)
-
-
-    pbar.finish()
-
-    return corrupt_tokens, targets, error_type
+    return df
 
 def context_is_complete(tokens, n):
     context = ' '.join(tokens)
