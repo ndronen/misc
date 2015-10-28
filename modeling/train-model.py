@@ -27,8 +27,8 @@ import keras.models
 
 sys.path.append('.')
 
-from nick.callbacks import ClassificationReport
-from nick.utils import (count_parameters, callable_print,
+from modeling.callbacks import ClassificationReport
+from modeling.utils import (count_parameters, callable_print,
         load_model_data, ModelConfig, LoggerWriter)
 
 def kvpair(s):

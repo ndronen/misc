@@ -8,7 +8,7 @@ from keras.constraints import maxnorm
 from keras.regularizers import l2
 from keras.optimizers import SGD, Adam, RMSprop, Adadelta, Adagrad
 
-from nick.layers import ImmutableEmbedding
+from modeling.layers import ImmutableEmbedding
 
 def build_model(args):
     print("args", vars(args))

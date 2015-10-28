@@ -22,8 +22,8 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping
 
 sys.path.append('.')
 
-from nick.callbacks import ClassificationReport
-from nick.utils import (count_parameters, callable_print,
+from modeling.callbacks import ClassificationReport
+from modeling.utils import (count_parameters, callable_print,
         ModelConfig, LoggerWriter)
 
 def load_data(path, variable_window_name, target_name):

@@ -4,7 +4,7 @@ import sys
 import h5py
 import json
 import numpy as np
-from nick.utils import ModelConfig, load_model_data
+from modeling.utils import ModelConfig, load_model_data
 from keras.utils.np_utils import to_categorical
 from sklearn import metrics
 

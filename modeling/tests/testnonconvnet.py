@@ -8,7 +8,7 @@ from keras import models
 from keras.layers import embeddings
 from keras.layers import core
 
-from nick.nonconvnet import ZeroFillDiagonals, \
+from modeling.nonconvnet import ZeroFillDiagonals, \
         SplitOutputByFilter, \
         SlidingWindowL2MaxPooling
 

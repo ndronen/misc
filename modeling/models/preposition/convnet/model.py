@@ -9,8 +9,8 @@ from keras.constraints import maxnorm
 from keras.regularizers import l2
 from keras.optimizers import SGD, Adam, Adadelta, Adagrad, RMSprop
 
-from nick.layers import ImmutableEmbedding
-from nick.difference import TemporalDifference
+from modeling.layers import ImmutableEmbedding
+from modeling.difference import TemporalDifference
 
 def build_model(args):
     print("args", vars(args))
