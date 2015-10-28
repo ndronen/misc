@@ -1,4 +1,9 @@
+import logging
+import theano.tensor as T
 from keras.layers.embeddings import Embedding
+from keras.layers.core import Layer
+
+logger = logging.getLogger()
 
 class ImmutableEmbedding(Embedding):
     '''
@@ -18,3 +23,18 @@ class ImmutableEmbedding(Embedding):
         print("params", self.params)
         self.params = []
         print("params", self.params)
+
+
+class Transpose(Layer):
+    def __init__(self):
+        super(Transpose, self).__init__()
+        self.input = T.matrix()
+
+    def _get_output(self, X):
+        return X.T
+
+    def get_output(self, train):
+        return self._get_output(self.get_input(train))
+
+    def get_config(self):
+        return {"name": self.__class__.__name__}

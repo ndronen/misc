@@ -21,7 +21,7 @@ def build_model(args):
 
     if hasattr(args, 'embedding_weights') and args.embedding_weights is not None:
         W = np.load(args.embedding_weights)
-        if args.train_embeddings:
+        if args.train_embeddings is True or args.train_embeddings == 'true':
             model.add(Embedding(args.n_vocab, args.n_word_dims,
                 weights=[W],
                 W_constraint=maxnorm(args.embedding_max_norm)))
@@ -53,39 +53,30 @@ def build_model(args):
     if 'normalization' in args.regularization_layer:
         model.add(BatchNormalization((args.n_filters,)))
 
-    model.add(Dense(args.n_filters, args.n_hidden,
+    model.add(Dense(args.n_filters, 2*args.n_filters,
         W_regularizer=l2(args.l2_penalty)))
     model.add(Activation('relu'))
     if 'dropout' in args.regularization_layer:
         model.add(Dropout(args.dropout_p))
     if 'normalization' in args.regularization_layer:
-        model.add(BatchNormalization((args.n_hidden,)))
+        model.add(BatchNormalization((2*args.n_filters,)))
 
-    model.add(Dense(args.n_hidden, args.n_hidden,
+    model.add(Dense(2*args.n_filters, 2*args.n_filters))
+    model.add(Activation('relu'))
+    if 'dropout' in args.regularization_layer:
+        model.add(Dropout(args.dropout_p))
+    if 'normalization' in args.regularization_layer:
+        model.add(BatchNormalization((2*args.n_filters,)))
+
+    model.add(Dense(2*args.n_filters, 2*args.n_filters,
         W_regularizer=l2(args.l2_penalty)))
     model.add(Activation('relu'))
     if 'dropout' in args.regularization_layer:
         model.add(Dropout(args.dropout_p))
     if 'normalization' in args.regularization_layer:
-        model.add(BatchNormalization((args.n_hidden,)))
+        model.add(BatchNormalization((2*args.n_filters,)))
 
-    model.add(Dense(args.n_hidden, args.n_hidden,
-        W_regularizer=l2(args.l2_penalty)))
-    model.add(Activation('relu'))
-    if 'dropout' in args.regularization_layer:
-        model.add(Dropout(args.dropout_p))
-    if 'normalization' in args.regularization_layer:
-        model.add(BatchNormalization((args.n_hidden,)))
-
-    model.add(Dense(args.n_hidden, args.n_hidden,
-        W_regularizer=l2(args.l2_penalty)))
-    model.add(Activation('relu'))
-    if 'dropout' in args.regularization_layer:
-        model.add(Dropout(args.dropout_p))
-    if 'normalization' in args.regularization_layer:
-        model.add(BatchNormalization((args.n_hidden,)))
-
-    model.add(Dense(args.n_hidden, args.n_classes,
+    model.add(Dense(2*args.n_filters, args.n_classes,
         W_regularizer=l2(args.l2_penalty)))
     #if 'normalization' in args.regularization_layer:
     #    model.add(BatchNormalization((args.n_classes,)))

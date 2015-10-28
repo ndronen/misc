@@ -117,8 +117,17 @@ New configuration (with clipping)
 
 Train on 16m, validate on 200k:
 
-    
+---------------------------------------------------------------------------
+After creating a balanced data set (which excluded 'about', because it
+is so less frequent than the other prepositions), I may have discovered
+that training a model with intra-minibatch contrasting cases -- that is,
+with every sentence from the corpus being accompanied by an example that
+is the same sentence with an error introduced -- is essential to being
+able to train this model.
+---------------------------------------------------------------------------
 
-TODO: multi-task learning; change train.py to allow multiple --target
+---------------------------------------------------------------------------
+Multi-task learning; change train.py to allow multiple --target
 arguments ... or change the architecture so the targets used are
 determined by model.json and model.py?
+---------------------------------------------------------------------------
