@@ -26,14 +26,13 @@ from nick.callbacks import ClassificationReport
 from nick.utils import (count_parameters, callable_print,
         ModelConfig, LoggerWriter)
 
-def load_data(path, variable_window_name, fixed_window_name, target_name):
+def load_data(path, variable_window_name, target_name):
     hdf5 = h5py.File(path)
 
     variable_window = hdf5[variable_window_name].value.astype(np.int32)
-    fixed_window = hdf5[fixed_window_name].value.astype(np.int32)
     target = hdf5[target_name].value.astype(np.int32)
 
-    return variable_window, fixed_window, target
+    return variable_window, target
 
 def kvpair(s):
     try:
@@ -64,8 +63,6 @@ def get_parser():
             help='HDF5 file of valid examples.')
     parser.add_argument('variable_window_name', metavar='VARIABLE_WINDOW_NAME', type=str,
             help='Name of the sequential data in input HDF5 file.')
-    parser.add_argument('fixed_window_name', metavar='FIXED_WINDOW_NAME', type=str,
-            help='Name of the variable containing fixed_window data in input HDF5 file.')
     parser.add_argument('target_name', metavar='target_name', type=str,
             help='Name of the variable containing target variable in input HDF5 file.')
 
@@ -127,14 +124,14 @@ def main(args):
     else:
         logging.basicConfig(level=logging.DEBUG)
 
-    variable_window_train, fixed_window_train, target_train = load_data(
+    variable_window_train, target_train = load_data(
             args.train_file,
-            args.variable_window_name, args.fixed_window_name,
+            args.variable_window_name,
             args.target_name)
 
-    variable_window_valid, fixed_window_valid, target_valid = load_data(
+    variable_window_valid, target_valid = load_data(
             args.valid_file,
-            args.variable_window_name, args.fixed_window_name,
+            args.variable_window_name, 
             args.target_name)
 
     '''
@@ -199,10 +196,8 @@ def main(args):
 
     logging.debug("target_train_one_hot " + str(target_train_one_hot.shape))
     logging.debug("variable_window_train " + str(variable_window_train.shape))
-    logging.debug("fixed_window_train " + str(fixed_window_train.shape))
 
     variable_input_width = variable_window_train.shape[1]
-    fixed_input_width = fixed_window_train.shape[1]
 
     min_vocab_index = np.min(variable_window_train)
     max_vocab_index = np.max(variable_window_train)
@@ -221,11 +216,9 @@ def main(args):
     json_cfg['valid_file'] = args.valid_file
     json_cfg['n_vocab'] = max(args.n_vocab, np.max(variable_window_train) + 1)
     json_cfg['variable_input_width'] = variable_window_train.shape[1]
-    json_cfg['fixed_input_width'] = fixed_window_train.shape[1]
     json_cfg['n_classes'] = n_classes
     json_cfg['seed'] = args.seed
     json_cfg['variable_window_name'] = args.variable_window_name
-    json_cfg['fixed_window_name'] = args.fixed_window_name
     json_cfg['target_name'] = args.target_name
 
     logging.debug("loading graph")
@@ -347,9 +340,9 @@ def main(args):
                 break
 
             current_train = next(train_file_iter)
-            window_train, fixed_window_train, target_train = load_data(
+            window_train, target_train = load_data(
                     current_train,
-                    args.variable_window_name, args.fixed_window_name,
+                    args.variable_window_name,
                     args.target_name)
             target_train_one_hot = np_utils.to_categorical(target_train, n_classes)
 
@@ -364,23 +357,51 @@ def main(args):
     else:
         train_data = {
                 args.variable_window_name: variable_window_train,
-                args.fixed_window_name: fixed_window_train,
                 args.target_name: target_train_one_hot
                 }
-        print([train_data[k].shape[1] for k in train_data.keys()])
+        print([(k, train_data[k].shape) for k in train_data.keys()])
 
         valid_data = {
                 args.variable_window_name: variable_window_valid,
-                args.fixed_window_name: fixed_window_valid,
                 args.target_name: target_valid_one_hot
                 }
+        print([(k, valid_data[k].shape) for k in valid_data.keys()])
+
+        print('inputs')
+        print(graph.inputs)
+        for k,v in graph.inputs.iteritems():
+            x = [k, v]
+            if hasattr(v, 'input'):
+                x.append(v.input)
+            if hasattr(v, 'output'):
+                x.append(x.output)
+            print(x)
+
+        print('nodes')
+        print(graph.nodes)
+        for k,v in graph.nodes.iteritems():
+            x = [k, v]
+            if hasattr(v, 'input'):
+                x.append(v.input)
+            if hasattr(v, 'output'):
+                x.append(x.output)
+            print(x)
+        print('outputs')
+        print(graph.outputs)
+        for k,v in graph.outputs.iteritems():
+            x = [k, v]
+            if hasattr(v, 'input'):
+                x.append(v.input)
+            if hasattr(v, 'output'):
+                x.append(x.output)
+            print(x)
 
         graph.fit(train_data,
             shuffle=args.shuffle,
             nb_epoch=args.n_epochs,
             batch_size=graph_cfg.batch_size,
             #show_accuracy=True,
-            validation_data=(valid_data),
+            #validation_data=(valid_data),
             callbacks=callbacks,
             class_weight=class_weight,
             verbose=2 if args.log else 1)

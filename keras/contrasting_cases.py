@@ -29,9 +29,9 @@ def create_dataset(n, train_size, valid_size):
 
     # Make the data different along one dimension.
     even = np.arange(0, n, step=2)
-    X[even, 0] = np.random.uniform(.5, 1.25, size=n/2)
+    X[even, 0] = np.random.uniform(-.25, 1.75, size=n/2)
     # Make each odd-numbered row the inverse of its previous row.
-    X[even+1, 0] = -X[even, 0]
+    X[even+1, 0] = np.random.uniform(-1.75, .25, size=n/2)
 
     X += np.random.uniform(0.01, size=X.shape)
     X = X.astype(np.float32)
