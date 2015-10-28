@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-# TODO: add feature to allow passing model configuration parameters as
-# command-line arguments.
+from __future__ import absolute_import
+from __future__ import print_function
 
 import os, sys, shutil
 import logging
@@ -27,50 +27,32 @@ sys.path.append('.')
 
 from modeling.callbacks import ClassificationReport
 from modeling.utils import (count_parameters, callable_print,
-        load_model_data, ModelConfig, LoggerWriter)
+        setup_logging, load_model_data,
+        build_model_id, build_model_path,
+        ModelConfig)
 import modeling.parser
 
 def main(args):
-    if args.model_dest:
-        model_id = args.model_dest
-    else:
-        model_id = uuid.uuid1().hex
 
-    model_path = args.model_dir + '/' + model_id + '/'
+    model_id = build_model_id(args)
+    model_path = build_model_path(args, model_id)
+    setup_model_dir(args, model_path)
 
     if not args.no_save:
         if not os.path.exists(model_path):
             os.mkdir(model_path)
         print("model path is " + model_path)
 
-    if args.log and not args.no_save:
-        logging.basicConfig(filename=model_path + 'model.log',
-                format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                datefmt='%m-%d %H:%M',
-                level=logging.DEBUG)
-        sys.stdout = LoggerWriter(logging.info)
-        sys.stderr = LoggerWriter(logging.warning)
-    else:
-        logging.basicConfig(level=logging.DEBUG)
+    sys.stdout, sys.stderr = setup_logging(args)
 
     x_train, y_train = load_model_data(args.train_file,
-            args.data_name, args.target_name)
+            args.data_name, args.target_name,
+            n=args.n_train)
     x_validation, y_validation = load_model_data(
             args.validation_file,
-            args.data_name, args.target_name)
+            args.data_name, args.target_name,
+            n=args.n_validation)
 
-    if len(y_train) > args.n_train:
-        logging.info("Reducing training set size from " +
-                str(len(y_train)) + " to " + str(args.n_train))
-        y_train = y_train[0:args.n_train]
-        x_train = x_train[0:args.n_train, :]
-
-    if len(y_validation) > args.n_validation:
-        logging.info("Reducing validation set size from " +
-                str(len(y_validation)) + " to " + str(args.n_validation))
-        y_validation = y_validation[0:args.n_validation]
-        x_validation = x_validation[0:args.n_validation, :]
-    
     rng = np.random.RandomState(args.seed)
 
     if args.target_data:

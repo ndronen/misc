@@ -1,3 +1,6 @@
+import sys
+import logging
+import uuid
 import numpy as np
 import h5py
 
@@ -40,7 +43,7 @@ class LoggerWriter:
 def callable_print(s):
     print(s)
 
-def load_model_data(path, data_name, target_name):
+def load_model_data(path, data_name, target_name, n=sys.maxint):
     hdf5 = h5py.File(path)
     datasets = [hdf5[d].value.astype(np.int32) for d in data_name]
     for i,d in enumerate(datasets):
@@ -49,4 +52,33 @@ def load_model_data(path, data_name, target_name):
     print([d.shape for d in datasets])
     data = np.concatenate(datasets, axis=1)
     target = hdf5[target_name].value.astype(np.int32)
+
+    if len(data) > n:
+        target = target[0:args.n_train]
+        data = data[0:args.n_train, :]
+
     return data, target
+
+def setup_logging(args):
+    if args.log and not args.no_save:
+        logging.basicConfig(filename=args.model_path + 'model.log',
+                format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                datefmt='%m-%d %H:%M',
+                level=logging.DEBUG)
+        stdout = LoggerWriter(logging.info)
+        stderr = LoggerWriter(logging.warning)
+    else:
+        logging.basicConfig(level=logging.DEBUG)
+        stdout = sys.stdout
+        stderr = sys.stderr
+    return stdout, stderr
+
+def build_model_id(args):
+    if args.model_dest:
+        return args.model_dest
+    else:
+        return uuid.uuid1().hex
+
+def build_model_path(args, model_id):
+    # TODO: Windows compatibility.
+    return args.model_dir + '/' + model_id + '/'

@@ -4,8 +4,8 @@ from chainer import optimizers
 
 class Model(object):
     def __init__(self, args):
-        for k,v in vars(args):
-            self[k] = v
+        for k,v in vars(args).iteritems():
+            self.__dict__[k] = v
         self.init_params()
         self.init_optimizer()
         self.optimizer.setup(self.params)

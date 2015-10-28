@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from future import __print_function__
+from __future__ import absolute_import
+from __future__ import print_function
 
 import sys
 import six
@@ -15,57 +16,42 @@ import pandas as pd
 import chainer
 from chainer import cuda
 from modeling.chainer_model import Classifier
-from modeling.utils import load_model_data
-
-class Model(Classifier):
-    def init_params(self):
-        self.params = chainer.FunctionSet(
-            l1=F.Linear(self.n_inputs, 2*self.n_units),
-            l2=F.Linear(2*self.n_units, 2*self.n_units),
-            l3=F.Linear(2*self.n_units, self.n_classes))
-
-    def forward(self, data, train=True):
-        x = chainer.Variable(data)
-        h1 = F.dropout(F.relu(self.params.l1(x)), train=train)
-        h2 = F.dropout(F.relu(self.params.l2(h1)), train=train)
-        return self.params.l3(h2)
+from modeling.utils import load_model_data, ModelConfig
+import modeling.parser
 
 def main(args):
     if args.gpu >= 0:
         cuda.check_cuda_available()
     xp = cuda.cupy if args.gpu >= 0 else np
-    
-    raise NotImplementedError('implement data loading')
-    
-    '''
-    train_vectors, train_scores, \
-        validation_vectors, validation_scores, \
-        test_vectors, test_scores = data.load_aspire_data(args.prompt,
-                analyzer=args.analyzer, ngram_range=args.ngram_range,
-                max_features=args.max_features)
-    '''
-    
-    if args.train_size < train_vectors.shape[0]:
-        # Take the first `train_size` rows.
-        train_vectors = train_vectors[0:args.train_size, :]
-        train_scores = train_scores[0:args.train_size]
-    
-    N = len(train_scores)
-    N_validation = len(validation_scores)
-    N_test = len(test_scores)
-    
+
+    model_id = build_model_id(args)
+    model_path = build_model_path(args, model_id)
+    setup_model_dir(args, model_path)
+    sys.stdout, sys.stderr = setup_logging(args)
+
+    x_train, y_train = load_model_data(args.train_file,
+            args.data_name, args.target_name,
+            n=args.n_train)
+    x_validation, y_validation = load_model_data(
+            args.validation_file,
+            args.data_name, args.target_name,
+            n=args.n_validation)
+
+    rng = np.random.RandomState(args.seed)
+
+    N = len(x_train)
+    N_validation = len(x_validation)
+
+    sys.path.append(args.model_dir)
+    from model import Model
+    model_cfg = ModelConfig(**json_cfg)
+    model = build_model(model_cfg)
+    setattr(model, 'stop_training', False)
     model = Model(args)
     
     if args.gpu >= 0:
         cuda.get_device(args.gpu).use()
         model.to_gpu()
-    
-    x_train = train_vectors
-    y_train = train_scores
-    x_validation = validation_vectors
-    y_validation = validation_scores
-    x_test = test_vectors
-    y_test = test_scores
     
     best_accuracy = 0.
     best_epoch = 0

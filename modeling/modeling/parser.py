@@ -1,3 +1,4 @@
+import sys
 import argparse
 
 def kvpair(s):
@@ -56,9 +57,9 @@ def build():
             help='Shuffle the data in each minibatch')
     parser.add_argument('--n-epochs', type=int, default=100,
             help='The maximum number of epochs to train')
-    parser.add_argument('--n-train', default=np.inf, type=int,
+    parser.add_argument('--n-train', default=sys.maxint, type=int,
             help='The number of training examples to use')
-    parser.add_argument('--n-validation', default=np.inf, type=int,
+    parser.add_argument('--n-validation', default=sys.maxint, type=int,
             help='The number of validation examples to use')
     parser.add_argument('--n-vocab', default=-1, type=int,
             help='The number of words in the training vocabulary')
