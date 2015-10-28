@@ -37,17 +37,14 @@ class SklearnMetricCheckpointClassification(Callback):
 '''
 
 class ClassificationReport(Callback):
-    def __init__(self, x, y, logger, target_names=None, error_classes_only=True, iteration_freq=10):
+    def __init__(self, x, y, logger, target_names=None, iteration_freq=10):
         self.x = x
         self.y = y
         self.logger = logger
         self.iteration_freq = iteration_freq
 
         if target_names is not None:
-            if error_classes_only:
-                labels, target_names = self.error_classes(target_names)
-            else:
-                labels = np.arange(len(target_names))
+            labels = np.arange(len(target_names))
         else:
             labels = None
 
@@ -74,14 +71,6 @@ class ClassificationReport(Callback):
                 epoch=epoch, fbeta=fbeta))
 
         self.logger(report)
-
-    def error_classes(self, target_names):
-        # Assumes actual labels (numeric codes) start at 0 and are
-        # contiguous.
-        labels = np.arange(len(target_names))
-        pairs = [pair.split('-') for pair in target_names]
-        mask = np.array([pair[0] != pair[1] for pair in pairs])
-        return labels[mask], target_names[mask]
 
 class OptimizerMonitor(Callback):
     def __init__(self, logger):

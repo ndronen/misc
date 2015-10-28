@@ -54,8 +54,8 @@ def load_model_data(path, data_name, target_name, n=sys.maxint):
     target = hdf5[target_name].value.astype(np.int32)
 
     if len(data) > n:
-        target = target[0:args.n_train]
-        data = data[0:args.n_train, :]
+        target = target[0:n]
+        data = data[0:n, :]
 
     return data, target
 
@@ -82,3 +82,11 @@ def build_model_id(args):
 def build_model_path(args, model_id):
     # TODO: Windows compatibility.
     return args.model_dir + '/' + model_id + '/'
+
+def setup_model_dir(args, model_path):
+    if not args.no_save:
+        if not os.path.exists(model_path):
+            os.mkdir(model_path)
+            print('created model directory ' + model_path)
+        else:
+            print('using existing model directory ' + model_path)

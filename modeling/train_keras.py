@@ -27,7 +27,8 @@ sys.path.append('.')
 
 from modeling.callbacks import ClassificationReport
 from modeling.utils import (count_parameters, callable_print,
-        setup_logging, load_model_data,
+        setup_logging, setup_model_dir,
+        load_model_data,
         build_model_id, build_model_path,
         ModelConfig)
 import modeling.parser
@@ -37,12 +38,6 @@ def main(args):
     model_id = build_model_id(args)
     model_path = build_model_path(args, model_id)
     setup_model_dir(args, model_path)
-
-    if not args.no_save:
-        if not os.path.exists(model_path):
-            os.mkdir(model_path)
-        print("model path is " + model_path)
-
     sys.stdout, sys.stderr = setup_logging(args)
 
     x_train, y_train = load_model_data(args.train_file,
@@ -168,8 +163,7 @@ def main(args):
     if args.classification_report:
         cr = ClassificationReport(x_validation, y_validation,
                 callback_logger,
-                target_names=target_names,
-                error_classes_only=args.error_classes_only)
+                target_names=target_names)
         callbacks.append(cr)
 
     if args.extra_train_file is not None:
