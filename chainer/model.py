@@ -24,19 +24,26 @@ class Model(object):
             self.optimizer = optimizers.RMSprop()
 
     def update(self):
-        if self.weight_decay > 0:
-            self.optimizer.weight_decay(self.weight_decay)
+        if hasattr(self, 'weight_decay'):
+            if self.weight_decay > 0:
+                self.optimizer.weight_decay(self.weight_decay)
         self.optimizer.update()
 
-    def iteration(self, data, target):
-        self.optimizer.zero_grads()
+    def iteration(self, data, target, train=False):
+        if train:
+            self.optimizer.zero_grads()
         pred = self.forward(data)
         loss, metric = self.loss(pred, target)
-        loss.backward()
-        self.update()
+        if train:
+            loss.backward()
+            self.update()
         return pred, loss, metric
 
     def fit(self, data, target):
+        pred, loss, metric = self.iteration(data, target, train=True)
+        return pred, loss, metric
+
+    def evaluate(self, data, target):
         pred, loss, metric = self.iteration(data, target)
         return pred, loss, metric
 

@@ -129,24 +129,16 @@ while True:
 
     sum_accuracy = 0
     sum_loss = 0
-
     for j, i in enumerate(six.moves.range(0, N, args.batch_size)):
         x_batch = xp.asarray(x_train[perm[i:i + args.batch_size]])
         y_batch = xp.asarray(y_train[perm[i:i + args.batch_size]])
-
-        optimizer.zero_grads()
-        y_hat, loss, acc = forward(x_batch, y_batch)
-        loss.backward()
-        if args.weight_decay > 0:
-            optimizer.weight_decay(args.weight_decay)
-        optimizer.update()
-
+        pred, loss, acc = model.fit(x_batch, y_batch)
         sum_loss += float(loss.data) * len(y_batch)
         sum_accuracy += float(acc.data) * len(y_batch)
-
     print('train epoch={}, mean loss={}, accuracy={}'.format(
         epoch, sum_loss / N, sum_accuracy / N))
 
+    '''
     if args.learning_rate_decay > 0.:
         lr = args.learning_rate
         lr = lr * (1 - args.learning_rate_decay)
@@ -155,6 +147,7 @@ while True:
         optimizer = optimizers.MomentumSGD(
                 lr=lr, momentum=args.momentum)
         optimizer.setup(model)
+    '''
 
     # validation set evaluation
     sum_accuracy = 0
@@ -162,9 +155,7 @@ while True:
     for i in six.moves.range(0, N_validation, args.batch_size):
         x_batch = xp.asarray(x_validation[i:i + args.batch_size])
         y_batch = xp.asarray(y_validation[i:i + args.batch_size])
-
-        y_hat, loss, acc = forward(x_batch, y_batch, train=False)
-
+        pred, loss, acc = model.predict(x_batch, target=y_batch)
         sum_loss += float(loss.data) * len(y_batch)
         sum_accuracy += float(acc.data) * len(y_batch)
 
