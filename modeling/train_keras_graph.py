@@ -25,81 +25,7 @@ sys.path.append('.')
 from modeling.callbacks import ClassificationReport
 from modeling.utils import (count_parameters, callable_print,
         ModelConfig, LoggerWriter)
-
-def load_data(path, variable_window_name, target_name):
-    hdf5 = h5py.File(path)
-
-    variable_window = hdf5[variable_window_name].value.astype(np.int32)
-    target = hdf5[target_name].value.astype(np.int32)
-
-    return variable_window, target
-
-def kvpair(s):
-    try:
-        k,v = s.split('=')
-        if '.' in v:
-            try:
-                v = float(v)
-            except ValueError:
-                pass
-        else:
-            try:
-                v = int(v)
-            except ValueError:
-                pass
-        return k,v
-    except:
-        raise argparse.ArgumentTypeError(
-                '--graph-cfg arguments must be KEY=VALUE pairs')
-
-def get_parser():
-    parser = argparse.ArgumentParser(
-            description='Train a keras graph on sentences.')
-    parser.add_argument('graph_dir', metavar="MODEL_DIR", type=str,
-            help='The base directory of this graph.  Must contain a graph.py (graph code) and a graph.json (hyperparameters).  Model configuration and weights are saved to graph_dir/UUID.')
-    parser.add_argument('train_file', metavar='TRAIN_FILE', type=str,
-            help='HDF5 file of training examples.')
-    parser.add_argument('valid_file', metavar='VALIDATION_FILE', type=str,
-            help='HDF5 file of valid examples.')
-    parser.add_argument('variable_window_name', metavar='VARIABLE_WINDOW_NAME', type=str,
-            help='Name of the sequential data in input HDF5 file.')
-    parser.add_argument('target_name', metavar='target_name', type=str,
-            help='Name of the variable containing target variable in input HDF5 file.')
-
-    parser.add_argument('--extra-train-file', type=str, nargs='+',
-            help='path to one or more extra train files, useful for when training set is too big to fit into memory.')
-    parser.add_argument('--graph-cfg', type=kvpair, nargs='+', default=[],
-            help='Model hyper-parameters as KEY=VALUE pairs; overrides parameters in MODEL_DIR/graph.json')
-    parser.add_argument('--graph-dest', type=str,
-            help='Directory to which to copy graph.py and graph.json.  This overrides copying to graph_dir/UUID.')
-    parser.add_argument('--target-data', type=str,
-            help='Pickled dictionary of target data from sklearn.preprocessing.LabelEncoder.  The dictionary must contain a key `TARGET_NAME` that maps either to a list of target names or a dictionary mapping target names to their class weights (useful for imbalanced data sets')
-    parser.add_argument('--description', type=str,
-            help='Short description of this graph (data, hyperparameters, etc.)')
-    parser.add_argument('--seed', default=17, type=int,
-            help='The seed for the random number generator')
-    parser.add_argument('--shuffle', default=False, action='store_true',
-            help='Shuffle the data in each minibatch')
-    parser.add_argument('--n-epochs', type=int, default=100,
-            help='The maximum number of epochs to train')
-    parser.add_argument('--n-train', default=np.inf, type=int,
-            help='The number of training examples to use')
-    parser.add_argument('--n-valid', default=np.inf, type=int,
-            help='The number of valid examples to use')
-    parser.add_argument('--n-vocab', default=-1, type=int,
-            help='The number of words in the training vocabulary')
-    parser.add_argument('--n-classes', default=-1, type=int,
-            help='The number of classes in TARGET_NAME')
-    parser.add_argument('--log', action='store_true',
-            help='Whether to send console output to log file')
-    parser.add_argument('--no-save', action='store_true',
-            help='Disable saving/copying of graph.py and graph.json to a unique directory for reproducibility')
-    parser.add_argument('--classification-report', action='store_true',
-            help='Include an sklearn classification report on the valid set at end of each epoch')
-    parser.add_argument('--error-classes-only', action='store_true',
-            help='Only report on error classes in classification report')
-
-    return parser.parse_args()
+import modeling.parser
 
 def main(args):
     if args.graph_dest:
@@ -124,12 +50,12 @@ def main(args):
     else:
         logging.basicConfig(level=logging.DEBUG)
 
-    variable_window_train, target_train = load_data(
+    variable_window_train, target_train = load_model_data(
             args.train_file,
             args.variable_window_name,
             args.target_name)
 
-    variable_window_valid, target_valid = load_data(
+    variable_window_valid, target_valid = load_model_data(
             args.valid_file,
             args.variable_window_name, 
             args.target_name)
@@ -340,7 +266,7 @@ def main(args):
                 break
 
             current_train = next(train_file_iter)
-            window_train, target_train = load_data(
+            window_train, target_train = load_model_data(
                     current_train,
                     args.variable_window_name,
                     args.target_name)
@@ -407,4 +333,5 @@ def main(args):
             verbose=2 if args.log else 1)
 
 if __name__ == '__main__':
-    sys.exit(main(get_parser()))
+    parser = modeling.parser.build_keras()
+    sys.exit(main(parser.parse_args()))
