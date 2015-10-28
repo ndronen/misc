@@ -1,0 +1,82 @@
+import chainer
+import chainer.functions as F
+from chainer import optimizers
+
+class Model(object):
+    def __init__(self, args):
+        for k,v in vars(args):
+            self[k] = v
+        self.init_params()
+        self.init_optimizer()
+        self.optimizer.setup(self.params)
+
+    def init_optimizer(self):
+        if self.optimizer == 'SGD':
+            self.optimizer = optimizers.MomentumSGD(
+                lr=self.learning_rate, momentum=self.momentum)
+        elif self.optimizer == 'AdaDelta':
+            self.optimizer = optimizers.AdaDelta()
+        elif self.optimizer == 'AdaGrad':
+            self.optimizer = optimizers.AdaGrad()
+        elif self.optimizer == 'Adam':
+            self.optimizer = optimizers.Adam()
+        elif self.optimizer == 'RMSprop':
+            self.optimizer = optimizers.RMSprop()
+
+    def update(self):
+        if self.weight_decay > 0:
+            self.optimizer.weight_decay(self.weight_decay)
+        self.optimizer.update()
+
+    def iteration(self, data, target):
+        self.optimizer.zero_grads()
+        pred = self.forward(data)
+        loss, metric = self.loss(pred, target)
+        loss.backward()
+        self.update()
+        return pred, loss, metric
+
+    def fit(self, data, target):
+        pred, loss, metric = self.iteration(data, target)
+        return pred, loss, metric
+
+    def init_params(self):
+        raise NotImplementedError()
+
+    def forward(self):
+        raise NotImplementedError()
+
+    def loss(self, pred, target):
+        raise NotImplementedError()
+
+    def predict(self, data):
+        raise NotImplementedError()
+
+    def predict_proba(self, data):
+        raise NotImplementedError()
+
+    def to_gpu(self):
+        self.params.to_gpu()
+
+class Classifier(Model):
+    def loss(self, pred, target):
+        loss = F.softmax_cross_entropy(pred, target)
+        metric = F.accuracy(pred, target)
+        return loss, metric
+
+    def predict(self, data):
+        pred = self.forward(data, train=False)
+        return np.argmax(F.softmax(pred).data, axis=1)
+
+    def predict_proba(self, data):
+        pred = self.forward(data, train=False)
+        return F.softmax(pred).data
+
+class Regressor(Model):
+    def loss(self, pred, target):
+        loss = F.mean_squared_error(pred, target)
+        return loss, loss
+
+    def predict(self, data):
+        pred = self.forward(data, train=False)
+        return np.argmax(F.softmax(pred).data, axis=1)
