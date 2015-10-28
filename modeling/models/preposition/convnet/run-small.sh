@@ -4,7 +4,7 @@ N=1000000
 
 embedding_weights=data/prepositions-all-new-weights.npy
 
-./train-model.py \
+./train_model.py \
     models/preposition/convnet \
     data/prepositions-all-new-train-$N.h5 \
     data/prepositions-all-new-validate.h5 \
@@ -20,7 +20,7 @@ embedding_weights=data/prepositions-all-new-weights.npy
     --n-epochs 10 \
     --log
 
-./train-model.py \
+./train_model.py \
     models/preposition/convnet \
     data/prepositions-all-new-train-$N.h5 \
     data/prepositions-all-new-validate.h5 \
@@ -36,7 +36,7 @@ embedding_weights=data/prepositions-all-new-weights.npy
     --n-epochs 10 \
     --log
 
-./train-model.py \
+./train_model.py \
     models/preposition/convnet \
     data/prepositions-all-new-train-$N.h5 \
     data/prepositions-all-new-validate.h5 \
@@ -52,7 +52,7 @@ embedding_weights=data/prepositions-all-new-weights.npy
     --n-epochs 10 \
     --log
 
-./train-model.py \
+./train_model.py \
     models/preposition/convnet \
     data/prepositions-all-new-train-$N.h5 \
     data/prepositions-all-new-validate.h5 \
@@ -68,7 +68,7 @@ embedding_weights=data/prepositions-all-new-weights.npy
     --n-epochs 10 \
     --log
 
-./train-model.py \
+./train_model.py \
     models/preposition/convnet \
     data/prepositions-all-new-train-$N.h5 \
     data/prepositions-all-new-validate.h5 \
