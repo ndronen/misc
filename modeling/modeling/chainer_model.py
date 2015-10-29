@@ -56,7 +56,7 @@ class Model(object):
     def loss(self, pred, target):
         raise NotImplementedError()
 
-    def predict(self, data):
+    def predict(self, data, target=None):
         raise NotImplementedError()
 
     def predict_proba(self, data):
@@ -65,15 +65,23 @@ class Model(object):
     def to_gpu(self):
         self.params.to_gpu()
 
+    def to_cpu(self):
+        self.params.to_cpu()
+
 class Classifier(Model):
     def loss(self, pred, target):
+        target = chainer.Variable(target)
         loss = F.softmax_cross_entropy(pred, target)
         metric = F.accuracy(pred, target)
         return loss, metric
 
-    def predict(self, data):
+    def predict(self, data, target=None):
         pred = self.forward(data, train=False)
-        return np.argmax(F.softmax(pred).data, axis=1)
+        if target is None:
+            return np.argmax(F.softmax(pred).data, axis=1)
+        else:
+            loss, metric = self.loss(pred, target)
+            return pred, loss, metric
 
     def predict_proba(self, data):
         pred = self.forward(data, train=False)
@@ -81,9 +89,14 @@ class Classifier(Model):
 
 class Regressor(Model):
     def loss(self, pred, target):
+        target = chainer.Variable(target)
         loss = F.mean_squared_error(pred, target)
         return loss, loss
 
-    def predict(self, data):
+    def predict(self, data, target=None):
         pred = self.forward(data, train=False)
-        return np.argmax(F.softmax(pred).data, axis=1)
+        if target is None:
+            return pred
+        else:
+            loss, metric = self.loss(pred, target)
+            return pred, loss, metric
