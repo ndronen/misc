@@ -22,7 +22,7 @@ import nltk
 import numpy as np
 import pandas as pd
 from numpy.random import RandomState
-from sklearn.cross_validation import train_test_split
+import sklearn.cross_validation
 
 MODEL_DIR = 'models/spelling/convnet/8d1c58f0737b11e5921d22000aec9897/'
 INDEX_FILE = 'models/spelling/data/wikipedia-index.pkl'
@@ -123,7 +123,7 @@ def build_tokenizer(tokenizer='stanford'):
 def is_word(token):
     return re.match(r'[\w.-]{2,}$', token)
 
-def insert_characters(token, index_to_char, n=1, seed=17):
+def insert_characters(token, index_to_char, n=1, char_pool=string.ascii_lowercase, seed=17):
     if isinstance(seed, RandomState):
         rng = seed
     else:
@@ -132,11 +132,12 @@ def insert_characters(token, index_to_char, n=1, seed=17):
     new_token = token
     for i in six.moves.range(n):
         idx = rng.randint(len(new_token))
-        ch = index_to_char[rng.randint(len(index_to_char))]
+        #ch = index_to_char[rng.randint(len(index_to_char))]
+        ch = rng.choice(list(char_pool))
         new_token = unicode(new_token[0:idx] + ch + new_token[idx:])
     return new_token
 
-def delete_characters(token, index_to_char, n=1, seed=17):
+def delete_characters(token, index_to_char, n=1, char_pool=None, seed=17):
     if isinstance(seed, RandomState):
         rng = seed
     else:
@@ -154,7 +155,7 @@ def delete_characters(token, index_to_char, n=1, seed=17):
             raise e
     return new_token
 
-def replace_characters(token, index_to_char, n=1, seed=17):
+def replace_characters(token, index_to_char, n=1, char_pool=string.ascii_lowercase, seed=17):
     if isinstance(seed, RandomState):
         rng = seed
     else:
@@ -163,11 +164,12 @@ def replace_characters(token, index_to_char, n=1, seed=17):
     new_token = token
     for i in six.moves.range(n):
         idx = max(1, rng.randint(len(new_token)))
-        ch = index_to_char[rng.randint(len(index_to_char))]
+        #ch = index_to_char[rng.randint(len(index_to_char))]
+        ch = rng.choice(list(char_pool))
         new_token = unicode(new_token[0:idx-1] + ch + new_token[idx:])
     return new_token
 
-def transpose_characters(token, index_to_char, n=1, seed=17):
+def transpose_characters(token, index_to_char, n=1, char_pool=None, seed=17):
     if isinstance(seed, RandomState):
         rng = seed
     else:
@@ -351,6 +353,7 @@ def build_index(token_seq, min_freq=100, max_features=1000, downsample=0):
 
     return token_seq_index, char_to_index, term_to_index
 
+
 def min_dictionary_edit_distance(terms, dictionary, progress=False):
     """
     Find the edit distance from each of a list of terms to the nearest
@@ -478,7 +481,7 @@ def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_
     seed : int or np.random.RandomState
         The initialization for the random number generator.
 
-    Returns
+    Returns (FIXME: now returns data frame)
     ---------
     spelling_errors : np.ndarray
         A matrix of examples of a deliberately-injected spelling error.
@@ -498,13 +501,23 @@ def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_
     max_inserts_per_token = max(n_errors_per_token)
     max_inserts_per_context = 2*max(n_errors_per_context)
     max_chars_in_window = leading_context_size + max_token_length + trailing_context_size + len(leading_separator) + len(trailing_separator) + max_inserts_per_token + max_inserts_per_context
-    # The "background" on which each context is overlain is a sequence
-    # of spaces; a space represents 'no character'.
+
     error_examples = np.zeros((n_examples, max_chars_in_window), dtype=np.int32)
     error_examples.fill(char_to_index[' '])
+
+    leading_contexts = np.zeros((n_examples, leading_context_size + max_inserts_per_context))
+    leading_contexts.fill(char_to_index[' '])
+    spelling_errors = np.zeros((n_examples, max_token_length + max_inserts_per_token))
+    spelling_errors.fill(char_to_index[' '])
+    trailing_contexts = np.zeros((n_examples, trailing_context_size + max_inserts_per_context))
+    trailing_contexts.fill(char_to_index[' '])
+
+    correct_tokens = []
+    corrupt_tokens = []
     corrections = np.zeros(n_examples, dtype=np.int32)
     error_types = []
     context_ids = []
+    example_ids = []
     term_lens = []
     edit_distance_to_nearest_term = []
     nearest_term = []
@@ -520,8 +533,15 @@ def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_
 
     index_to_char = dict((i,c) for c,i in char_to_index.iteritems())
     if 63 not in index_to_char.keys():
-        # A workaround for now.
+        # A workaround for now.  Delete ASAP.
         index_to_char[63] = '^'
+
+    def add_chars_to_array(n, array, chars, default_char=' '):
+        for k, ch in enumerate(chars):
+            try:
+                array[n, k] = char_to_index[ch]
+            except KeyError, e:
+                array[n, k] = char_to_index[default_char]
 
     for token in token_seq_index.keys():
         if len(token) > max_token_length:
@@ -549,14 +569,16 @@ def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_
                 window = ''.join([leading, leading_separator,
                         corrupt_token, trailing_separator, trailing])
 
-                for k, ch in enumerate(window):
-                    try:
-                        error_examples[n, k] = char_to_index[ch]
-                    except KeyError, e:
-                        error_examples[n, k] = char_to_index['_']
-                corrections[n] = term_to_index[token]
+                add_chars_to_array(n, error_examples, window)
+                add_chars_to_array(n, leading_contexts, leading)
+                add_chars_to_array(n, spelling_errors, corrupt_token)
+                add_chars_to_array(n, trailing_contexts, trailing)
+
+                correct_tokens.append(token)
+                corrupt_tokens.append(corrupt_token)
                 error_types.append(corruptor.__name__)
                 context_ids.append(i)
+                example_ids.append(n)
                 edit_distance_to_nearest_term.append(distance)
                 nearest_term.append(term)
                 term_lens.append(term_len)
@@ -569,15 +591,25 @@ def build_dataset(token_seq, token_seq_index, term_to_index, char_to_index, max_
             'correction': corrections,
             'error_type': error_types,
             'context_id': context_ids,
+            'example_id': example_ids,
             'edit_distance_to_nearest_term': edit_distance_to_nearest_term,
             'nearest': nearest_term,
-            'term_length': term_lens
+            'term_length': term_lens,
+            'correct_token': correct_tokens,
+            'corrupt_token': corrupt_tokens
             })
-    colwidth = int(np.log10(error_examples.shape[1]))+1
-    colfmt = 'c{col:0' + str(colwidth) + 'd}'
-    for col in np.arange(error_examples.shape[1]):
-        colname = colfmt.format(col=col)
-        df[colname] = error_examples[:, col]
+
+    def add_columns(df, array, colname_prefix):
+        colwidth = int(np.log10(array.shape[1]))+1
+        colfmt = colname_prefix + '{col:0' + str(colwidth) + 'd}'
+        for col in np.arange(array.shape[1]):
+            colname = colfmt.format(col=col)
+            df[colname] = array[:, col]
+
+    add_columns(df, error_examples, 'full_error')
+    add_columns(df, leading_contexts, 'leading_context')
+    add_columns(df, spelling_errors, 'spelling_error')
+    add_columns(df, trailing_contexts, 'trailing_context')
 
     return df
 
@@ -627,82 +659,73 @@ def build_fixed_width_window(tokens, i, token, window_size=100, token_pos=40):
     trailing = trailing_context(tokens, i, n)
     return leading + ' ' + token + ' ' + trailing
 
-def save_data(X, y, train_size, valid_size, output_prefix='data-', index_to_term=None, index_to_char=None):
-    if train_size % 2 != 0:
-        raise ValueError('train_size ({train_size}) must be even'.format(
-            train_size=train_size))
-    if valid_size % 2 != 0:
-        raise ValueError('valid_size ({valid_size}) must be even'.format(
-            valid_size=valid_size))
+def context_id_to_idx(ids, groups):
+    '''
+    '''
+    idx = []
+    for i in ids:
+        idx.extend(groups[i])
+    return idx
 
-    evens = np.arange(0, len(X), 2)
-    train_evens, other_evens = train_test_split(evens,
-            train_size=train_size/2, random_state=17)
-    valid_evens, test_evens = train_test_split(other_evens,
-            train_size=valid_size/2, random_state=17)
+def build_splits(dataset, train_size, valid_size, by=['context_id'], seed=17):
+    """
+    Split a dataset created by `build_dataset` into train, validation, and test.
+    """
+    if isinstance(seed, RandomState):
+        rng = seed
+    else:
+        rng = RandomState(seed)
 
-    train_i = np.concatenate([train_evens, train_evens+1])
-    valid_i = np.concatenate([valid_evens, valid_evens+1])
-    test_i = np.concatenate([test_evens, test_evens+1])
+    groups = dataset.groupby(by).groups
+    context_ids = groups.keys()
 
-    X_train = X[train_i]
-    X_valid = X[valid_i]
-    X_test = X[test_i]
+    train_ids, other_ids = sklearn.cross_validation.train_test_split(
+            context_ids, train_size=train_size, random_state=rng)
+    valid_ids, test_ids = sklearn.cross_validation.train_test_split(
+            other_ids, train_size=valid_size, random_state=rng)
 
-    y_train = y[train_i]
-    y_valid = y[valid_i]
-    y_test = y[test_i]
+    train_idx = context_id_to_idx(train_ids, groups)
+    valid_idx = context_id_to_idx(valid_ids, groups)
+    test_idx = context_id_to_idx(test_ids, groups)
 
-    f_train = h5py.File(output_prefix + 'train.h5', 'w')
-    f_train.create_dataset('X', data=X_train, dtype=int)
-    f_train.create_dataset('y', data=y_train, dtype=int)
-    f_train.close()
+    return dataset.ix[train_idx, :], dataset.ix[valid_idx, :], dataset.ix[test_idx, :]
 
-    f_valid = h5py.File(output_prefix + 'valid.h5', 'w')
-    f_valid.create_dataset('X', data=X_valid, dtype=int)
-    f_valid.create_dataset('y', data=y_valid, dtype=int)
-    f_valid.close()
+def dataset_to_hdf5(df, filename, what = {'example_id': 'example_id', 'context_id': 'context_id', 'correction': 'correction', 'edit_distance_to_nearest_term': 'edit_distance_to_nearest_term', 'leading_context': r'leading_context\d{2}', 'spelling_error': r'spelling_error\d{2}', 'full_error': r'full_error\d{2}', 'trailing_context': r'trailing_context\d{2}'}):
 
-    f_test = h5py.File(output_prefix + 'test.h5', 'w')
-    f_test.create_dataset('X', data=X_test, dtype=int)
-    f_test.create_dataset('y', data=y_test, dtype=int)
-    f_test.close()
+    f = h5py.File(filename, 'w')
+    for name, pattern in what.iteritems():
+        if name in df.columns:
+            data = df[name].values
+        else:
+            mask = [True if re.match(pattern, s) else False for s in df.columns]
+            data = df.ix[:, np.where(mask)[0]].values
+        f.create_dataset(name, data=data, dtype=int)
+    f.close()
 
+def save_index(term_to_index, char_to_index, output_prefix):
     indices = {}
 
-    if index_to_term is not None:
+    if term_to_index is not None:
+        index_to_term = dict((i,t) for t,i in term_to_index.iteritems())
         indices['term'] = index_to_term
 
-        tokens = index_to_term.values()
-        min_distance = defaultdict(lambda: np.inf)
-        nearest_token = {}
-
-        for i,token in enumerate(tokens):
-            for j,other_token in enumerate(tokens):
-                if i == j:
-                    continue
-                dist = Levenshtein.distance(token, other_token)
-                if dist < min_distance[token]:
-                    min_distance[token] = dist
-                    nearest_token[token] = other_token
-
-        min_distance_ordered = sorted(min_distance.iteritems(),
-                key=itemgetter(1), reverse=True)
-
-        indices['min_distance'] = dict(min_distance)
-        indices['min_distance_ordered'] = min_distance_ordered
-        indices['nearest_token'] = nearest_token
-
-        names = sorted(index_to_term.iteritems(), key=itemgetter(0))
-        names = [n[1] for n in names]
-        target_data = {}
-        target_data['y'] = {}
-        target_data['y']['names'] = names
-        target_data['y']['weights'] = dict(zip(range(len(names)), [1] * len(names)))
-        json.dump(target_data, open(output_prefix + 'target-data.json', 'w'))
-
-    if index_to_char is not None:
+    if char_to_index is not None:
+        index_to_char = dict((i,t) for t,i in char_to_index.iteritems())
         indices['char'] = index_to_char
 
     if len(indices):
         cPickle.dump(indices, open(output_prefix + 'index.pkl', 'w'))
+
+def save_target_data(term_to_index, output_prefix): 
+    """
+    Save vocabulary and weights (right now just 1's) to JSON for use 
+    by training scripts.
+    """
+    index_to_term = dict((i,t) for t,i in term_to_index.iteritems())
+    names = sorted(index_to_term.iteritems(), key=itemgetter(0))
+    names = [n[1] for n in names]
+    target_data = {}
+    target_data['y'] = {}
+    target_data['y']['names'] = names
+    target_data['y']['weights'] = dict(zip(range(len(names)), [1] * len(names)))
+    json.dump(target_data, open(output_prefix + 'target-data.json', 'w'))
