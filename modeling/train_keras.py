@@ -27,8 +27,8 @@ sys.path.append('.')
 
 from modeling.callbacks import ClassificationReport
 from modeling.utils import (count_parameters, callable_print,
-        setup_logging, setup_model_dir,
-        load_model_data,
+        setup_logging, setup_model_dir, save_model_info,
+        load_model_data, load_model_json, load_target_data,
         build_model_id, build_model_path,
         ModelConfig)
 import modeling.parser
@@ -50,44 +50,12 @@ def main(args):
 
     rng = np.random.RandomState(args.seed)
 
-    if args.target_data:
-        target_names_dict = json.load(open(args.target_data))
-
-        try:
-            target_data = target_names_dict[args.target_name]
-        except KeyError:
-            raise ValueError("Invalid key " + args.target_name +
-                    " for dictionary in " + args.target_data)
-
-        if isinstance(target_data, dict):
-            try:
-                target_names = target_data['names']
-                class_weight = target_data['weights']
-            except KeyError, e:
-                raise ValueError("Target data dictionary from " +
-                        args.target_data + "is missing a key: " + str(e))
-        elif isinstance(target_data, list):
-            target_names = target_data
-            class_weight = None
-        else:
-            raise ValueError("Target data must be list or dict, not " +
-                    str(type(target_data)))
-
-        n_classes = len(target_names)
+    if args.n_classes > -1:
+        n_classes = args.n_classes
     else:
-        target_names = None
-        class_weight = None
-        if args.n_classes > -1:
-            n_classes = args.n_classes
-        else:
-            n_classes = max(y_train)+1
+        n_classes = max(y_train)+1
 
-    if class_weight is not None:
-        # Keys are strings in JSON; convert them to int.
-        for key in class_weight.keys():
-            v = class_weight[key]
-            del class_weight[key]
-            class_weight[int(key)] = v
+    n_classes, target_names, class_weight = load_target_data(args, n_classes)
 
     logging.debug("n_classes {0} min {1} max {2}".format(
         n_classes, min(y_train), max(y_train)))
@@ -98,27 +66,12 @@ def main(args):
     logging.debug("y_train_one_hot " + str(y_train_one_hot.shape))
     logging.debug("x_train " + str(x_train.shape))
 
-    input_width = x_train.shape[1]
-
     min_vocab_index = np.min(x_train)
     max_vocab_index = np.max(x_train)
     logging.debug("min vocab index {0} max vocab index {1}".format(
         min_vocab_index, max_vocab_index))
 
-    # Load the base model configuration.
-    json_cfg = json.load(open(args.model_dir + '/model.json'))
-
-    # Copy command-line arguments.
-    for k,v in vars(args).iteritems():
-        json_cfg[k] = v
-    # Copy (overriding) model parameters provided on the command-line.
-    for k,v in args.model_cfg:
-        json_cfg[k] = v
-
-    # Add some values are derived from the training data.
-    json_cfg['n_vocab'] = max(args.n_vocab, np.max(x_train) + 1)
-    json_cfg['input_width'] = x_train.shape[1]
-    json_cfg['n_classes'] = n_classes
+    json_cfg = load_model_json(args, x_train, n_classes)
 
     logging.debug("loading model")
 
@@ -137,19 +90,9 @@ def main(args):
     else:
         callbacks = []
 
+    save_model_info(args, model_path, model_cfg)
+
     if not args.no_save:
-        if args.description:
-            with open(model_path + '/README.txt', 'w') as f:
-                f.write(args.description + '\n')
-
-        # Save model hyperparameters and code.
-        for model_file in ['model.py', 'model.json']:
-            shutil.copyfile(args.model_dir + '/' + model_file,
-                    model_path + '/' + model_file)
-
-        json.dump(vars(model_cfg), open(model_path + '/args.json', 'w'))
-
-        # And weights.
         callbacks.append(ModelCheckpoint(
             filepath=model_path + '/model.h5',
             verbose=1,
