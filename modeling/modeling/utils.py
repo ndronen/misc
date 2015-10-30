@@ -1,5 +1,6 @@
 import sys
 import os.path
+import shutil
 import logging
 import uuid
 import json    
@@ -113,6 +114,58 @@ def load_model_json(args, x_train, n_classes):
     json_cfg['n_classes'] = n_classes
 
     return json_cfg
+
+def load_target_data(args, n_classes):
+    if not args.target_data:
+        return n_classes, None, None
+
+    target_names_dict = json.load(open(args.target_data))
+
+    try:
+        target_data = target_names_dict[args.target_name]
+    except KeyError:
+        raise ValueError("Invalid key " + args.target_name +
+                " for dictionary in " + args.target_data)
+
+    if isinstance(target_data, dict):
+        try:
+            target_names = target_data['names']
+            class_weight = target_data['weights']
+        except KeyError, e:
+            raise ValueError("Target data dictionary from " +
+                    args.target_data + "is missing a key: " + str(e))
+    elif isinstance(target_data, list):
+        target_names = target_data
+        class_weight = None
+    else:
+        raise ValueError("Target data must be list or dict, not " +
+                str(type(target_data)))
+
+    if class_weight is not None:
+        # Keys are strings in JSON; convert them to int.
+        for key in class_weight.keys():
+            v = class_weight[key]
+            del class_weight[key]
+            class_weight[int(key)] = v
+
+    n_classes = len(target_names)
+
+    return n_classes, target_names, class_weight
+
+def save_model_info(args, model_path, model_cfg):
+    if args.no_save:
+        return
+
+    if args.description:
+        with open(model_path + '/README.txt', 'w') as f:
+            f.write(args.description + '\n')
+
+    # Save model hyperparameters and code.
+    for model_file in ['model.py', 'model.json']:
+        shutil.copyfile(args.model_dir + '/' + model_file,
+                model_path + '/' + model_file)
+
+    json.dump(vars(model_cfg), open(model_path + '/args.json', 'w'))
 
 def load_model(model_dir, input_file_arg='validation_file', input_file=None):
     args_json = json.load(open(model_dir + '/args.json'))
