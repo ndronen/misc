@@ -23,7 +23,7 @@ export PYRO_SERIALIZER=pickle
 export R_HISTFILE=~/.Rhistory
 
 export PATH=$HOME/bin:/usr/local/bin:/usr/local/sbin:/usr/local/opt/coreutils/libexec/gnubin:$PATH:~/proj/torch/install/bin
-export PATH=~/anaconda/bin:$JAVA_HOME/bin:$PATH:~/proj/misc/bin:~/proj/Theano/bin:/usr/local/cuda/bin
+export PATH=~/anaconda2/bin:~/anaconda/bin:$JAVA_HOME/bin:$PATH:~/proj/misc/bin:~/proj/Theano/bin:/usr/local/cuda/bin
 
 export MANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
 export LD_LIBRARY_PATH=/usr/local/cuda-7.0/lib64:~/proj/torch/install/lib # :~/proj/torch/install/lib/lua/5.1/
