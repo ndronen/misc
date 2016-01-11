@@ -25,7 +25,7 @@ export R_HISTFILE=~/.Rhistory
 export PATH=$HOME/bin:/usr/local/bin:/usr/local/sbin:/usr/local/opt/coreutils/libexec/gnubin:$PATH:~/proj/torch/install/bin
 if [ $(hostname) == "snapper" ]
 then
-    export PATH=~/miniconda/bin:$PATH
+    export PATH=~/miniconda2/bin:$PATH
 else
     export PATH=~/anaconda/bin:$PATH
 fi
