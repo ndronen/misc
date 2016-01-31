@@ -14,7 +14,7 @@ export MAVEN_HOME=/opt/apache-maven
 export M2_HOME=$MAVEN_HOME
 export PERL5LIB=~/lib/perl/lib/perl5/5.8.2/i686-linux:~/lib/perl/lib/perl5/site_perl/5.8.2:~/lib/perl/lib/perl5/site_perl/5.8.2/i686-linux:${LSA:-/export/home/lsa/2.9}
 
-export PYTHONPATH=~/proj/Python/trunk/pykt:~/proj/modeling
+export PYTHONPATH=~/proj/Python/trunk/pykt:~/proj/modeling:~/proj/scikit-learn
 
 # For Pyro4 and gensim's distributed LSI.
 export PYRO_SERIALIZERS_ACCEPTED=pickle
@@ -22,7 +22,7 @@ export PYRO_SERIALIZER=pickle
 
 export R_HISTFILE=~/.Rhistory
 
-export PATH=$HOME/bin:/usr/local/bin:/usr/local/sbin:/usr/local/opt/coreutils/libexec/gnubin:$PATH:~/proj/torch/install/bin
+export PATH=$HOME/bin:/usr/local/bin:/usr/local/sbin:/usr/local/opt/coreutils/libexec/gnubin:$PATH:~/proj/torch/install/bin:~/proj/srilm/lm/bin/i686-m64
 if [ $(hostname) == "snapper" ]
 then
     export PATH=~/miniconda2/bin:$PATH
