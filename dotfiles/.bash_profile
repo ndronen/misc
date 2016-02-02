@@ -22,17 +22,24 @@ export PYRO_SERIALIZER=pickle
 
 export R_HISTFILE=~/.Rhistory
 
-export PATH=$HOME/bin:/usr/local/bin:/usr/local/sbin:/usr/local/opt/coreutils/libexec/gnubin:$PATH:~/proj/torch/install/bin:~/proj/srilm/lm/bin/i686-m64
-
 if [ $(hostname) == "snapper" ]
 then
     export PATH=~/miniconda2/bin:$PATH
+elif [ $(hostname) == "ndronen" ]
+then
+    export PATH=~/anaconda2/bin:$PATH
 else
     export PATH=~/anaconda/bin:$PATH
 fi
-export PATH=$PATH:$JAVA_HOME/bin:$PATH:~/proj/misc/bin:~/proj/Theano/bin:/usr/local/cuda/bin
+
+export PATH=$PATH:$HOME/bin:/usr/local/bin:/usr/local/sbin: 
+export PATH=$PATH:/usr/local/opt/coreutils/libexec/gnubin
+export PATH=$PATH:$JAVA_HOME/bin:~/proj/misc/bin:~/proj/Theano/bin:/usr/local/cuda/bin
+export PATH=$PATH:~/proj/srilm/lm/bin/$(~/proj/srilm/sbin/machine-type)
+export PATH=$PATH:~/proj/torch/install/bin
 
 export MANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
+
 export LD_LIBRARY_PATH=/usr/local/cuda-7.0/lib64:~/proj/torch/install/lib # :~/proj/torch/install/lib/lua/5.1/
 export BYOBU_PREFIX=$(brew --prefix)
 
