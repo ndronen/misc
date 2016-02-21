@@ -1,0 +1,10 @@
+#!/bin/bash -e
+
+if [ $# -ne 1 ]
+then
+    echo "usage: change-screenshot-format [ pdf | jpg | png ]" >&2
+    exit 1
+fi
+
+defaults write com.apple.screencapture type $1
+killall SystemUIServer
