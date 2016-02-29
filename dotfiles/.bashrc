@@ -1,11 +1,10 @@
 # For R
 export COLUMNS
 
-if [ ! -d ~/.autoenv ]
+if [ -e /usr/share/virtualenvwrapper/virtualenvwrapper.sh ] 
 then
-    git clone git://github.com/kennethreitz/autoenv.git ~/.autoenv
+    . /usr/share/virtualenvwrapper/virtualenvwrapper.sh
 fi
-source ~/.autoenv/activate.sh
 
 # If running interactively, then:
 if [ "$PS1" ]
@@ -26,11 +25,6 @@ then
     if [ -z $(which seq) ]
     then
         alias seq=gseq
-    fi
-
-    if [ ! -z $(which hub 2>/dev/null) ]
-    then
-        alias git=hub
     fi
 
     # Misc. aliases

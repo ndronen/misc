@@ -35,7 +35,6 @@ export PATH=$PATH:$JAVA_HOME/bin:~/proj/misc/bin
 if [ -e /usr/share/virtualenvwrapper/virtualenvwrapper.sh ]
 then
     export WORKON_HOME=~/proj/envs/
-    . /usr/share/virtualenvwrapper/virtualenvwrapper.sh
 fi
 
 export PYTHONUNBUFFERED=1
