@@ -14,38 +14,28 @@ export MAVEN_HOME=/opt/apache-maven
 export M2_HOME=$MAVEN_HOME
 export PERL5LIB=~/lib/perl/lib/perl5/5.8.2/i686-linux:~/lib/perl/lib/perl5/site_perl/5.8.2:~/lib/perl/lib/perl5/site_perl/5.8.2/i686-linux:${LSA:-/export/home/lsa/2.9}
 
-export PYTHONPATH=~/proj/modeling:~/proj/spelling:~/proj/scikit-learn:~/proj/srilm/srilm-python
-
-# For Pyro4 and gensim's distributed LSI.
-export PYRO_SERIALIZERS_ACCEPTED=pickle
-export PYRO_SERIALIZER=pickle
-
+export PYTHONPATH=~/proj/srilm/srilm-python
 export R_HISTFILE=~/.Rhistory
 
-if [ $(hostname) == "snapper" ]
+if [ $(uname) -eq Darwin ]
 then
-    export PATH=~/miniconda2/bin:$PATH
-elif [ $(hostname) == "ndronen" ]
+    export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
+    export MANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
+elif [ $(uname) -eq Linux ]
 then
-    export PATH=~/anaconda2/bin:$PATH
-else
-    export PATH=~/anaconda/bin:$PATH
+    export PATH="$PATH:/usr/local/cuda/bin"
+    export LD_LIBRARY_PATH="/usr/local/cuda-7.0/lib64:$LD_LIBRARY_PATH"
 fi
 
-export PATH=$PATH:$HOME/bin:/usr/local/bin:/usr/local/sbin: 
-export PATH=$PATH:/usr/local/opt/coreutils/libexec/gnubin
-export PATH=$PATH:$JAVA_HOME/bin:~/proj/misc/bin:~/proj/Theano/bin:/usr/local/cuda/bin
-export PATH=$PATH:~/proj/srilm/lm/bin/$(~/proj/srilm/sbin/machine-type)
-export PATH=$PATH:~/proj/torch/install/bin
+export PATH=~/proj/srilm/lm/bin/$(~/proj/srilm/sbin/machine-type):$PATH
+export PATH=$PATH:$HOME/bin
+export PATH=$PATH:/usr/local/bin:/usr/local/sbin
+export PATH=$PATH:$JAVA_HOME/bin:~/proj/misc/bin
 
-export MANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
-
-export LD_LIBRARY_PATH=/usr/local/cuda-7.0/lib64:~/proj/torch/install/lib # :~/proj/torch/install/lib/lua/5.1/
-export BYOBU_PREFIX=$(brew --prefix)
-
-if [ -e /export/home/ndronen/proj/torch/install/bin/torch-activate ]
+if [ -e /usr/share/virtualenvwrapper/virtualenvwrapper.sh ]
 then
-    . /export/home/ndronen/proj/torch/install/bin/torch-activate
+    export WORKON_HOME=~/proj/envs/
+    . /usr/share/virtualenvwrapper/virtualenvwrapper.sh
 fi
 
 export PYTHONUNBUFFERED=1
