@@ -17,11 +17,11 @@ export PERL5LIB=~/lib/perl/lib/perl5/5.8.2/i686-linux:~/lib/perl/lib/perl5/site_
 export PYTHONPATH=~/proj/srilm/srilm-python
 export R_HISTFILE=~/.Rhistory
 
-if [[ $(uname) -eq Darwin ]]
+if [ "$(uname)" == Darwin ]
 then
     export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
     export MANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
-elif [[ $(uname) -eq Linux ]]
+elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
     export LD_LIBRARY_PATH="/usr/local/cuda-7.0/lib64:$LD_LIBRARY_PATH"
