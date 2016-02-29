@@ -35,3 +35,6 @@ pip install pandas
 pip install ipython
 
 pip install --upgrade https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow-0.7.1-cp34-none-linux_x86_64.whl
+
+( cd ~/proj/spelling && python setup.py devel )
+( cd ~/proj/modeling && python setup.py devel )
