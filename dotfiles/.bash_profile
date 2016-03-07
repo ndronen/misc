@@ -32,6 +32,11 @@ export PATH=$PATH:$HOME/bin
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
 export PATH=$PATH:$JAVA_HOME/bin:~/proj/misc/bin
 
+if [ $(hostname) == snapper ]
+then
+    export PATH=~/anaconda/bin:$PATH
+fi
+
 if [ -e /usr/share/virtualenvwrapper/virtualenvwrapper.sh ]
 then
     export WORKON_HOME=~/proj/envs/
