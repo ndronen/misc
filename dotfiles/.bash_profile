@@ -27,7 +27,10 @@ then
     export LD_LIBRARY_PATH="/usr/local/cuda-7.0/lib64:$LD_LIBRARY_PATH"
 fi
 
-export PATH=~/proj/srilm/lm/bin/$(~/proj/srilm/sbin/machine-type):$PATH
+if [ -e ~/proj/srilm/sbin/machine-type ]
+then
+    export PATH=~/proj/srilm/lm/bin/$(~/proj/srilm/sbin/machine-type):$PATH
+fi
 export PATH=$PATH:$HOME/bin
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
 export PATH=$PATH:$JAVA_HOME/bin:~/proj/misc/bin
@@ -38,6 +41,9 @@ then
 fi
 
 if [ -e /usr/share/virtualenvwrapper/virtualenvwrapper.sh ]
+then
+    export WORKON_HOME=~/proj/envs/
+elif [ -e /usr/local/bin/virualenvwrapper.sh ]
 then
     export WORKON_HOME=~/proj/envs/
 fi
