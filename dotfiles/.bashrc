@@ -45,7 +45,5 @@ then
     elif [ -e /usr/local/bin/virtualenvwrapper.sh ]
     then
         . /usr/local/bin/virtualenvwrapper.sh
-    then
-
     fi
 fi
