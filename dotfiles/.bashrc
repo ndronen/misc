@@ -42,5 +42,10 @@ then
     if [ -e /usr/share/virtualenvwrapper/virtualenvwrapper.sh ] 
     then
         . /usr/share/virtualenvwrapper/virtualenvwrapper.sh
+    elif [ -e /usr/local/bin/virtualenvwrapper.sh ]
+    then
+        . /usr/local/bin/virtualenvwrapper.sh
+    then
+
     fi
 fi
