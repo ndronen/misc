@@ -16,6 +16,7 @@ export PERL5LIB=~/lib/perl/lib/perl5/5.8.2/i686-linux:~/lib/perl/lib/perl5/site_
 
 export PYTHONPATH=~/proj/srilm/srilm-python
 export R_HISTFILE=~/.Rhistory
+export R_LIBS_USER=/export/home/ndronen/R/x86_64-pc-linux-gnu-library/3.2-$(hostname)
 
 if [ "$(uname)" == Darwin ]
 then
@@ -27,10 +28,7 @@ then
     export LD_LIBRARY_PATH="/usr/local/cuda-7.0/lib64:$LD_LIBRARY_PATH"
 fi
 
-if [ -e ~/proj/srilm/sbin/machine-type ]
-then
-    export PATH=~/proj/srilm/lm/bin/$(~/proj/srilm/sbin/machine-type):$PATH
-fi
+export PATH=~/proj/srilm/lm/bin/$(~/proj/srilm/sbin/machine-type):$PATH
 export PATH=$PATH:$HOME/bin
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
 export PATH=$PATH:$JAVA_HOME/bin:~/proj/misc/bin
@@ -41,9 +39,6 @@ then
 fi
 
 if [ -e /usr/share/virtualenvwrapper/virtualenvwrapper.sh ]
-then
-    export WORKON_HOME=~/proj/envs/
-elif [ -e /usr/local/bin/virualenvwrapper.sh ]
 then
     export WORKON_HOME=~/proj/envs/
 fi
