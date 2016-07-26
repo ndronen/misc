@@ -16,6 +16,7 @@ export PERL5LIB=~/lib/perl/lib/perl5/5.8.2/i686-linux:~/lib/perl/lib/perl5/site_
 
 export PYTHONPATH=~/proj/srilm/srilm-python
 export R_HISTFILE=~/.Rhistory
+export R_LIBS_USER=/export/home/ndronen/R/x86_64-pc-linux-gnu-library/3.2-$(hostname)
 
 if [ "$(uname)" == Darwin ]
 then
