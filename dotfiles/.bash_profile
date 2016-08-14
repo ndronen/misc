@@ -15,13 +15,13 @@ export M2_HOME=$MAVEN_HOME
 export PERL5LIB=~/lib/perl/lib/perl5/5.8.2/i686-linux:~/lib/perl/lib/perl5/site_perl/5.8.2:~/lib/perl/lib/perl5/site_perl/5.8.2/i686-linux:${LSA:-/export/home/lsa/2.9}
 
 export PYTHONPATH=~/proj/srilm/srilm-python
+export PYTHONHASHSEED=0
 export R_HISTFILE=~/.Rhistory
-export R_LIBS_USER=/export/home/ndronen/R/x86_64-pc-linux-gnu-library/3.2-$(hostname)
 
 if [ "$(uname)" == Darwin ]
 then
-    export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
-    export MANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
+    export PATH="/usr/local/bin:/usr/local/opt/coreutils/libexec/gnubin:$PATH"
+    export MANPATH="/usr/local/man:/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
 elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
@@ -39,6 +39,9 @@ then
 fi
 
 if [ -e /usr/share/virtualenvwrapper/virtualenvwrapper.sh ]
+then
+    export WORKON_HOME=~/proj/envs/
+elif [ -e /usr/local/bin/virtualenvwrapper.sh ]
 then
     export WORKON_HOME=~/proj/envs/
 fi
