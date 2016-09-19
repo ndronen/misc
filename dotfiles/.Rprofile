@@ -1,6 +1,10 @@
 # http://stackoverflow.com/questions/1189759/expert-r-users-whats-in-your-rprofile
 
 if (interactive()) {
+  install_colorout <- function() {
+    library(devtools)
+    install_github('jalvesaq/colorout')
+  }
   cosine_similarity <- function(x, y) { x %*% y / sqrt(x%*%x * y%*%y) }
   # Workaround for 
   # http://r.789695.n4.nabble.com/Troubles-with-stemming-tm-Snowball-packages-under-MacOS-td4292605.html
