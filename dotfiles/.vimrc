@@ -4,13 +4,11 @@ set expandtab
 set ts=4
 set history=1000
 
-" execute pathogen#infect()
-
 filetype on
 filetype plugin indent on
 syntax on
 
 set vb t_vb=
 
-set bg=dark
+set bg=light
 hi clear
