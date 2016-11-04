@@ -11,6 +11,7 @@ export R_HISTFILE=~/.Rhistory
 if [ "$(uname)" == Darwin ]
 then
     export PATH="/usr/local/bin:/usr/local/opt/coreutils/libexec/gnubin:$PATH"
+    export PATH="$PATH:/Library/TeX/texbin"
     export MANPATH="/usr/local/man:/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
 elif [ "$(uname)" == Linux ]
 then
