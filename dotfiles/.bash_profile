@@ -41,3 +41,8 @@ else
 fi
 
 . ~/.bashrc
+
+if [ -e ~/proj/torch/install/bin/torch-activate ]
+then
+    . ~/proj/torch/install/bin/torch-activate
+fi
