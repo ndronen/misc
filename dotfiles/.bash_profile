@@ -13,6 +13,7 @@ then
     export PATH="/usr/local/bin:/usr/local/opt/coreutils/libexec/gnubin:$PATH"
     export PATH="$PATH:/Library/TeX/texbin"
     export MANPATH="/usr/local/man:/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
+    export PYTHONPATH="/Users/dronen/proj/had_sp_segmentation"
 elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
@@ -20,7 +21,7 @@ then
 fi
 
 export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
-export PATH=$PATH:/usr/local/sbin
+export PATH=$PATH:/usr/local/sbin:~/.local/bin
 
 if [ -e /usr/share/virtualenvwrapper/virtualenvwrapper.sh ]
 then
