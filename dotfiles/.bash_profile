@@ -17,7 +17,8 @@ then
 elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
-    export LD_LIBRARY_PATH="/usr/local/cuda-7.0/lib64:$LD_LIBRARY_PATH"
+    export PYTHONPATH="/mnt/software/pyvision/src:/mnt/software/caffe-segnet/python:."
+    export CAFFE_ROOT="/mnt/software/caffe-segnet"
 fi
 
 export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
