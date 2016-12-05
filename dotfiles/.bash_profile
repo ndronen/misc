@@ -17,8 +17,9 @@ then
 elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
-    export PYTHONPATH="/mnt/software/pyvision/src:/mnt/software/caffe-segnet/python:."
-    export CAFFE_ROOT="/mnt/software/caffe-segnet"
+    export LD_LIBRARY_PATH="/usr/local/cuda-7.0/lib64:$LD_LIBRARY_PATH"
+    export PYTHONPATH="/mnt/software/pyvision/src:/mnt/software/caffe-segnet/python:"
+    export PYTHONPATH=$PYTHONPATH:/mnt/software/bitbucket/had_sp_segmentation
 fi
 
 export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
@@ -44,7 +45,11 @@ fi
 
 . ~/.bashrc
 
-if [ -e ~/proj/torch/install/bin/torch-activate ]
+#TORCH_ACTIVATE=/mnt/software/torch/install/bin/torch-activate
+#TORCH_ACTIVATE=/mnt/software/torch-lua5.2/install/bin/torch-activate
+TORCH_ACTIVATE=/mnt/software/torch-luajit/install/bin/torch-activate
+
+if [ -e $TORCH_ACTIVATE ]
 then
-    . ~/proj/torch/install/bin/torch-activate
+    . $TORCH_ACTIVATE
 fi
