@@ -218,7 +218,7 @@
 # forces a full reload of modules whose code may have changed, which the default
 # reload() function does not.  When deep_reload is off, IPython will use the
 # normal reload(), but deep_reload will still be available as dreload().
-# c.InteractiveShell.deep_reload = False
+c.InteractiveShell.deep_reload = True
 
 # Don't call post-execute functions that have failed in the past.
 # c.InteractiveShell.disable_failing_post_execute = False
@@ -231,11 +231,11 @@
 # c.InteractiveShell.enable_html_pager = False
 
 # Total length of command history
-# c.InteractiveShell.history_length = 10000
+c.InteractiveShell.history_length = 10000
 
 # The number of saved history entries to be loaded into the history buffer at
 # startup.
-# c.InteractiveShell.history_load_length = 1000
+c.InteractiveShell.history_load_length = 5000
 
 # 
 # c.InteractiveShell.ipython_dir = ''
@@ -326,7 +326,7 @@ c.TerminalInteractiveShell.highlight_matching_brackets = True
 # friendly, perldoc, default, xcode, emacs, pastie, tango, borland, lovelace,
 # algol_nu, colorful, monokai, fruity, bw, autumn, murphy, trac, vim, rrt,
 # paraiso-dark, manni, native, vs, algol, igor
-# c.TerminalInteractiveShell.highlighting_style = 'legacy'
+c.TerminalInteractiveShell.highlighting_style = 'vim'
 
 # Override highlighting format for specific tokens
 # c.TerminalInteractiveShell.highlighting_style_overrides = {}
@@ -406,7 +406,7 @@ c.TerminalInteractiveShell.highlight_matching_brackets = True
 
 # Write to database every x commands (higher values save disk access & power).
 # Values of 1 or less effectively disable caching.
-# c.HistoryManager.db_cache_size = 0
+c.HistoryManager.db_cache_size = 0
 
 # Should the history database include output? (default: no)
 # c.HistoryManager.db_log_output = False
@@ -611,4 +611,4 @@ c.TerminalInteractiveShell.highlight_matching_brackets = True
 
 # If True, any %store-d variables will be automatically restored when IPython
 # starts.
-# c.StoreMagics.autorestore = False
+c.StoreMagics.autorestore = False
