@@ -20,7 +20,7 @@ if getattr(ip, 'pt_cli'):
     for b in backward:
         registry.remove_binding(b.handler)
         registry.add_binding(
-            '/',
+            u'/',
             filter=mode,
             eager=b.eager,
             save_before=b.save_before)(b.handler)
@@ -28,7 +28,7 @@ if getattr(ip, 'pt_cli'):
     for b in forward:
         registry.remove_binding(b.handler)
         registry.add_binding(
-            '?',
+            u'?',
             filter=mode,
             eager=b.eager,
             save_before=b.save_before)(b.handler)
