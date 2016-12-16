@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import sys
 import random
 import optparse
+
 
 def main():
     p = optparse.OptionParser(
@@ -34,13 +37,13 @@ def main():
 
     while n < num_lines:
         i = int(random.random() * len(lines))
-        print lines[i],
+        sys.stdout.write(lines[i])
         del lines[i]
         n = n + 1
 
     if options.unsampled_to_stderr:
         for unsampled in lines:
-            print >>sys.stderr, unsampled,
+            sys.stderr.write(unsampled)
     
     return 0
 
