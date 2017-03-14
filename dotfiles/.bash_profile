@@ -7,6 +7,7 @@ export LESS="-erX"
 export TZ=America/Denver
 export PYTHONHASHSEED=0
 export R_HISTFILE=~/.Rhistory
+export OPENCV_OPENCL_RUNTIME=null
 
 if [ -e ~/.bash_profile.sync ]
 then
