@@ -26,7 +26,7 @@ elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
     export PYTHONPATH="$PYTHONPATH:~/proj/had_sp_segmentation"
-    export PYTHONPATH="~/proj/pyvision/src"
+    export PYTHONPATH="$PYTHONPATH:~/proj/pyvision/src"
 fi
 
 export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
