@@ -20,13 +20,13 @@ then
     export PATH="$PATH:/Library/TeX/texbin"
     export MANPATH="/usr/local/man:/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
     export PYTHONPATH="$PYTHONPATH:~/proj/had_sp_segmentation"
+    export PYTHONPATH="$PYTHONPATH:~/proj/pyvision/src"
     export PYTHONPATH="$PYTHONPATH:/usr/local/lib/python3.5/site-packages"
 elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
-    export PYTHONPATH="$PYTHONPATH:/mnt/software/bitbucket/had_sp_segmentation"
-    export PYTHONPATH="/mnt/software/pyvision/src:/mnt/software/caffe-segnet/python"
-    export CAFFE_ROOT="/mnt/software/caffe-segnet"
+    export PYTHONPATH="$PYTHONPATH:~/proj/had_sp_segmentation"
+    export PYTHONPATH="~/proj/pyvision/src"
 fi
 
 export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
