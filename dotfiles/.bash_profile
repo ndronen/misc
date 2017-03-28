@@ -20,14 +20,14 @@ then
     export PATH="$PATH:/Library/TeX/texbin"
     export MANPATH="/usr/local/man:/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
     export PYTHONPATH="$HOME/proj/had_sp_segmentation"
-    export PYTHONPATH="$HOME/proj/tfenet"
+    export PYTHONPATH="$PYTHONPATH:$HOME/proj/tfenet"
     export PYTHONPATH="$PYTHONPATH:~/proj/pyvision/src"
     export PYTHONPATH="$PYTHONPATH:/usr/local/lib/python3.5/site-packages"
 elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
     export PYTHONPATH="$HOME/proj/had_sp_segmentation"
-    export PYTHONPATH="$HOME/proj/tfenet"
+    export PYTHONPATH="$PYTHONPATH:$HOME/proj/tfenet"
     export PYTHONPATH="$PYTHONPATH:~/proj/pyvision/src"
 fi
 
