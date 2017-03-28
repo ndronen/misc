@@ -11,5 +11,5 @@ syntax on
 
 set vb t_vb=
 
-set bg=dark
+set bg=light
 hi clear
