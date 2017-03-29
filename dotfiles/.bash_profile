@@ -28,8 +28,8 @@ then
     export PATH="$PATH:/usr/local/cuda/bin"
     export PYTHONPATH="$HOME/proj/had_sp_segmentation"
     export PYTHONPATH="$PYTHONPATH:$HOME/proj/tfenet"
-    export PYTHONPATH="$PYTHONPATH:$HOME/pyvision/src"
-    export PYTHONPATH="$PYTHONPATH:$HOME/opencv/release/lib/python3"
+    export PYTHONPATH="$PYTHONPATH:$HOME/proj/pyvision/src"
+    export PYTHONPATH="$PYTHONPATH:$HOME/proj/opencv/release/lib/python3"
 fi
 
 export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
