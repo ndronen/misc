@@ -29,7 +29,7 @@ then
     export PYTHONPATH="$HOME/proj/had_sp_segmentation"
     export PYTHONPATH="$PYTHONPATH:$HOME/proj/tfenet"
     export PYTHONPATH="$PYTHONPATH:~/proj/pyvision/src"
-    export PYTHONPATH="$PYTHONPATH:~/proj/opencv/release/lib"
+    export PYTHONPATH="$PYTHONPATH:~/proj/opencv/release/lib/python3"
 fi
 
 export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
