@@ -16,6 +16,9 @@ def main():
     p.add_option("-u", "--unsampled-to-stderr",
         action='store_true',
         help="Print unsampled lines to stderr.")
+    p.add_option('--seed',
+        type=int, default=0,
+        help='Random seed for sampling.')
 
     options, arguments = p.parse_args()
 
@@ -24,6 +27,8 @@ def main():
         return 1
 
     num_lines = int(arguments[0])
+
+    rng = random.Random(options.seed)
 
     if len(arguments) == 2:
         lines = open(arguments[1]).readlines()
@@ -36,7 +41,7 @@ def main():
         n = num_lines - len(lines)
 
     while n < num_lines:
-        i = int(random.random() * len(lines))
+        i = int(rng.random() * len(lines))
         sys.stdout.write(lines[i])
         del lines[i]
         n = n + 1
