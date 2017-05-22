@@ -1,0 +1,30 @@
+#!/bin/bash -e
+
+uri=$1
+
+# Make the URI end with a slash.
+if [[ $uri != */ ]]
+then
+    uri=$uri/
+fi
+
+# Remove a possible leading "s3://".
+uri=$(echo -n $uri | sed 's,s3://,,')
+
+n_slashes=$(echo $uri | tr '/' '\n' | wc -l)
+bucket=$(echo -n $uri | tr '/' '\n' | head -1)
+key=$(echo -n $uri | tr '/' '\n' | tail -n $(($n_slashes - 2)) |  tr '\n' '/')
+
+if [[ -z $bucket ]]
+then
+    echo "mysteriously invalid S3 uri: '$uri' (empty bucket string after parsing)"
+    exit 1
+fi
+
+if [[ -z $key ]]
+then
+    echo "mysteriously invalid S3 uri: '$uri' (empty key string after parsing)"
+    exit 1
+fi
+
+aws s3api put-object --bucket $bucket --key $key
