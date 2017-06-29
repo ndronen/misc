@@ -7,7 +7,7 @@ export LESS="-erX"
 export TZ=America/Denver
 export PYTHONHASHSEED=0
 export R_HISTFILE=~/.Rhistory
-export OPENCV_OPENCL_RUNTIME=null
+export HAD_ML_API_KEY=88znbhNZdNhqeVt3
 
 if [ -e ~/.bash_profile.sync ]
 then
@@ -19,17 +19,14 @@ then
     export PATH="/usr/local/bin:/usr/local/opt/coreutils/libexec/gnubin:$PATH"
     export PATH="$PATH:/Library/TeX/texbin"
     export MANPATH="/usr/local/man:/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
-    export PYTHONPATH="$HOME/proj/had_sp_segmentation"
-    export PYTHONPATH="$PYTHONPATH:$HOME/proj/tfenet"
-    export PYTHONPATH="$PYTHONPATH:$HOME/pyvision/src"
-    export PYTHONPATH="$PYTHONPATH:/usr/local/lib/python3.5/site-packages"
+    export PYTHONPATH="/Users/dronen/proj/had_sp_segmentation"
+    export PYTHONPATH="$PYTHONPATH:/usr/local/lib/python3.6/site-packages"
 elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
-    export PYTHONPATH="$HOME/proj/had_sp_segmentation"
-    export PYTHONPATH="$PYTHONPATH:$HOME/proj/tfenet"
-    export PYTHONPATH="$PYTHONPATH:$HOME/proj/pyvision/src"
-    export PYTHONPATH="$PYTHONPATH:$HOME/proj/opencv/release/lib/python3"
+    export PYTHONPATH="/mnt/software/bitbucket/had_sp_segmentation"
+    export PYTHONPATH="/mnt/software/pyvision/src:/mnt/software/caffe-segnet/python"
+    export CAFFE_ROOT="/mnt/software/caffe-segnet"
 fi
 
 export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
