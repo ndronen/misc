@@ -11,6 +11,7 @@ then
     export HISTSIZE=5000
 
     # Some more ls aliases
+    alias vi=vim
     alias more=less
     alias lc='clear ; ls -l'
     alias lm='ls -l | less'
