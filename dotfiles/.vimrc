@@ -19,3 +19,6 @@ set vb t_vb=
 
 set bg=light
 hi clear
+
+au BufRead,BufNewFile *.py,*.pyw,*.c,*.h match BadWhitespace /\s\+$/
+set encoding=utf-8
