@@ -20,5 +20,11 @@ set vb t_vb=
 set bg=light
 hi clear
 
-au BufRead,BufNewFile *.py,*.pyw,*.c,*.h match BadWhitespace /\s\+$/
 set encoding=utf-8
+
+" https://github.com/tmhedberg/SimpylFold
+let g:SimpylFold_docstring_preview=0
+let g:SimpylFold_fold_docstring=0
+let b:SimpylFold_fold_docstring=0
+let g:SimpylFold_fold_import=0
+let b:SimpylFold_fold_import=0
