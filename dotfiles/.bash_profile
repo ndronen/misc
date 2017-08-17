@@ -9,6 +9,9 @@ export PYTHONHASHSEED=0
 export R_HISTFILE=~/.Rhistory
 export HAD_ML_API_KEY=88znbhNZdNhqeVt3
 
+export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
+export PATH=$PATH:/usr/local/sbin:~/.local/bin
+
 if [ "$(uname)" == Darwin ]
 then
     export PATH="/usr/local/bin:/usr/local/opt/coreutils/libexec/gnubin:$PATH"
@@ -26,9 +29,6 @@ then
     export PYTHONPATH="$PYTHONPATH:$HOME/proj/pyvision/src"
     export PYTHONPATH="$PYTHONPATH:$HOME/proj/opencv/release/lib/python3"
 fi
-
-export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
-export PATH=$PATH:/usr/local/sbin:~/.local/bin
 
 export PYTHONUNBUFFERED=1
 
