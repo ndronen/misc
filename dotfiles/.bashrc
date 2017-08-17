@@ -30,20 +30,11 @@ then
         }
     fi
 
-    if [ -z "$VIRTUAL_ENV" ]
+    if [ -z "$CONDA_DEFAULT_ENV" ]
     then
         export PS1='[\u@\h \t \w] \n$ '
     else
         # We're in a virtual environment.  Set PS1 differently.
-        VE_DIR=$(basename $VIRTUAL_ENV)
-        export PS1="($VE_DIR)[\\u@\\h \\t \\w] \\n\$ "
-    fi
-
-    if [ -e /usr/share/virtualenvwrapper/virtualenvwrapper.sh ] 
-    then
-        . /usr/share/virtualenvwrapper/virtualenvwrapper.sh
-    elif [ -e /usr/local/bin/virtualenvwrapper.sh ]
-    then
-        . /usr/local/bin/virtualenvwrapper.sh
+        export PS1="($CONDA_DEFAULT_ENV) [\\u@\\h \\t \\w] \\n\$ "
     fi
 fi
