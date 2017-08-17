@@ -7,7 +7,7 @@ export LESS="-erX"
 export TZ=America/Denver
 export PYTHONHASHSEED=0
 export R_HISTFILE=~/.Rhistory
-export OPENCV_OPENCL_RUNTIME=null
+export HAD_ML_API_KEY=88znbhNZdNhqeVt3
 
 if [ "$(uname)" == Darwin ]
 then
@@ -15,10 +15,8 @@ then
     export PATH="$PATH:/Library/TeX/texbin"
     export PATH="~/conda/miniconda3/bin:$PATH"
     export MANPATH="/usr/local/man:/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
-    export PYTHONPATH="$HOME/proj/had_sp_segmentation"
-    export PYTHONPATH="$PYTHONPATH:$HOME/proj/tfenet"
-    export PYTHONPATH="$PYTHONPATH:$HOME/pyvision/src"
-    export PYTHONPATH="$PYTHONPATH:/usr/local/lib/python3.5/site-packages"
+    export PYTHONPATH="/Users/dronen/proj/had_sp_segmentation"
+    export PYTHONPATH="$PYTHONPATH:/usr/local/lib/python3.6/site-packages"
 elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"

@@ -218,7 +218,7 @@ c.InteractiveShell.ast_node_interactivity = 'all'
 # forces a full reload of modules whose code may have changed, which the default
 # reload() function does not.  When deep_reload is off, IPython will use the
 # normal reload(), but deep_reload will still be available as dreload().
-c.InteractiveShell.deep_reload = True
+# c.InteractiveShell.deep_reload = True
 
 # Don't call post-execute functions that have failed in the past.
 # c.InteractiveShell.disable_failing_post_execute = False
@@ -326,7 +326,7 @@ c.TerminalInteractiveShell.highlight_matching_brackets = True
 # friendly, perldoc, default, xcode, emacs, pastie, tango, borland, lovelace,
 # algol_nu, colorful, monokai, fruity, bw, autumn, murphy, trac, vim, rrt,
 # paraiso-dark, manni, native, vs, algol, igor
-c.TerminalInteractiveShell.highlighting_style = 'vim'
+c.TerminalInteractiveShell.highlighting_style = 'lovelace'
 
 # Override highlighting format for specific tokens
 # c.TerminalInteractiveShell.highlighting_style_overrides = {}
