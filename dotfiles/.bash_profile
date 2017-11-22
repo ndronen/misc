@@ -22,8 +22,6 @@ elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
     export PATH="$HOME/conda/miniconda3/bin:$PATH"
-    #export PYTHONPATH="$PYTHONPATH:$HOME/proj/pyvision/src"
-    #export PYTHONPATH="$PYTHONPATH:$HOME/proj/opencv/release/lib/python3"
 fi
 
 export PYTHONUNBUFFERED=1
