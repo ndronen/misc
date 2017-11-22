@@ -18,7 +18,7 @@ then
     export PATH="$PATH:/Library/TeX/texbin"
     export PATH="$HOME/conda/miniconda3/bin:$PATH"
     export MANPATH="/usr/local/man:/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
-    export PYTHONPATH="/Users/dronen/proj/had_sp_segmentation"
+    export PYTHONPATH="/Users/dronen/proj/had-sp-legacy-segmentation"
 elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
