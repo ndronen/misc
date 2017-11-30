@@ -17,6 +17,7 @@ then
     export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
     export PATH="$PATH:/Library/TeX/texbin"
     export PATH="$HOME/conda/miniconda3/bin:$PATH"
+    export PATH="$HOME/anaconda3/bin:$PATH"
     export MANPATH="/usr/local/man:/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
 elif [ "$(uname)" == Linux ]
 then
