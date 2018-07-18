@@ -22,6 +22,7 @@ elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
     export PATH="$HOME/conda/miniconda3/bin:$PATH"
+    export PATH="$HOME/anaconda3/bin:$PATH"
 fi
 
 export PYTHONUNBUFFERED=1
