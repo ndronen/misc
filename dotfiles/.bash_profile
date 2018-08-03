@@ -12,6 +12,8 @@ export HAD_ML_API_KEY=88znbhNZdNhqeVt3
 export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
 export PATH=$PATH:/usr/local/sbin:~/.local/bin
 
+export PROJ_DIR=/usr/local/proj.4/
+
 if [ "$(uname)" == Darwin ]
 then
     export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
@@ -22,7 +24,6 @@ elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
     export PATH="$HOME/conda/miniconda3/bin:$PATH"
-    export PATH="$HOME/anaconda3/bin:$PATH"
 fi
 
 export PYTHONUNBUFFERED=1
