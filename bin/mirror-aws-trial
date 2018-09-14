@@ -3,6 +3,8 @@
 if [ $# -ne 1 ]
 then
     echo "usage: mirror-aws-trial S3_URI" >&2
+    echo "S3_URI must contain 'trial_0', 'trial_1', etc." >&2
+    echo "S3_URI must end with /" >&2
     exit 1
 fi        
 
