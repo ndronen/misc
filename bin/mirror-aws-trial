@@ -1,0 +1,18 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]
+then
+    echo "usage: mirror-aws-trial S3_URI" >&2
+    exit 1
+fi        
+
+export S3_URI=$1
+
+aws s3 ls $S3_URI | awk '/PRE/ { print $NF }' | while read trial_dir
+do
+    echo $trial_dir
+    for file in metrics-per-class.csv train.log run-params.json weights.csv
+    do
+        echo aws s3 cp ${S3_URI}${trial_dir}${file} ${trial_dir}${file}
+    done
+done
