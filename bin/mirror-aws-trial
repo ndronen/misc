@@ -15,6 +15,6 @@ do
     echo $trial_dir
     for file in metrics-per-class.csv train.log run-params.json weights.csv
     do
-        echo aws s3 cp ${S3_URI}${trial_dir}${file} ${trial_dir}${file}
+        aws s3 cp ${S3_URI}${trial_dir}${file} ${trial_dir}${file}
     done
 done
