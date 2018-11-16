@@ -11,7 +11,7 @@ of vi-mode editing in prompt_toolkit.  See this issue for details:
 ip = get_ipython()
 mode = (ViNavigationMode() | ViSelectionMode()) & ViMode()
 
-if getattr(ip, 'pt_cli'):
+if hasattr(ip, 'pt_cli'):
     registry = ip.pt_cli.application.key_bindings_registry
     is_search = lambda b: b.filter == mode
     forward = filter(is_search, registry.get_bindings_for_keys('/'))
