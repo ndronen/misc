@@ -12,7 +12,10 @@ export HAD_ML_API_KEY=88znbhNZdNhqeVt3
 export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
 export PATH=$PATH:/usr/local/sbin:~/.local/bin
 
-export PROJ_DIR=/usr/local/proj.4/
+if [ -d /usr/local/proj.4 ]
+then
+    export PROJ_DIR=/usr/local/proj.4/
+fi
 
 if [ "$(uname)" == Darwin ]
 then
