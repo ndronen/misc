@@ -1,3 +1,10 @@
-#!/bin/bash -xe
+#!/bin/bash
 
-# TODO: make ~/.bash_profile, etc, links to ~/proj/misc/dotfiles/.bash_profile.
+mkdir proj
+
+(
+    cd proj && (
+        git clone https://github.com/ndronen/misc &&
+            cd misc/dotfiles && cp -r .* ~/
+    )
+)
