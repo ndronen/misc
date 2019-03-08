@@ -1,0 +1,8 @@
+#!/bin/bash
+
+INSTALLER_FILE=Miniconda3-latest-Linux-x86_64.sh
+wget https://repo.anaconda.com/miniconda/$INSTALLER_FILE
+chomd 755 $INSTALLER_FILE
+./$INSTALLER_FILE
+
+conda create --name sandbox python=3.7
