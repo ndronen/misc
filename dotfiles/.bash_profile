@@ -12,10 +12,22 @@ export HAD_ML_API_KEY=88znbhNZdNhqeVt3
 export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
 export PATH=$PATH:/usr/local/sbin:~/.local/bin
 
-if [ -d /usr/local/proj.4 ]
-then
-    export PROJ_DIR=/usr/local/proj.4/
-fi
+
+export LDFLAGS="-L/usr/local/opt/openblas/lib"
+export CPPFLAGS="-I/usr/local/opt/openblas/include"
+
+export WORKSPACE_DIR=~/workspace
+export LMDSK_DIR=$WORKSPACE_DIR/lm-sdk
+
+export DYLD_LIBRARY_PATH=$LMSDK_DIR/lib:$DYLD_LIBRARY_PATH
+export __DYLD_LIBRARY_PATH=$LMSDK_DIR/lib:$__DYLD_LIBRARY_PATH
+export LMSDK_BLAS_LIBRARY="-lopenblas"
+export LMSDK_BLAS_INCLUDE_PATH="/usr/local/opt/openblas/include"
+export LMSDK_BLAS_LIBRARY_PATH="/usr/local/opt/openblas/lib"
+
+export __LMCONF_PREFIX=$HOME/.config/lmsdk
+export LMSDK_DISABLE_SWIG=true
+
 
 if [ "$(uname)" == Darwin ]
 then
