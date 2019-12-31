@@ -4,10 +4,10 @@ export CVS_RSH=ssh
 export EDITOR=vim
 export VISUAL=$EDITOR
 export LESS="-erX"
-export TZ=America/Denver
+export TZ=America/New_York
 export PYTHONHASHSEED=0
 export R_HISTFILE=~/.Rhistory
-export HAD_ML_API_KEY=88znbhNZdNhqeVt3
+export BASH_SILENCE_DEPRECATION_WARNING=1
 
 export PATH=/usr/local/bin:$PATH:~/proj/misc/bin
 export PATH=$PATH:/usr/local/sbin:~/.local/bin
