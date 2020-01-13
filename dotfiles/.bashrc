@@ -16,6 +16,7 @@ then
     alias lc='clear ; ls -l'
     alias lm='ls -l | less'
     alias screen='screen -aA'
+    alias typora='open -a Typora'
     alias R='R --quiet'
     if [ -z $(which seq) ]
     then
