@@ -21,12 +21,12 @@ if [ "$(uname)" == Darwin ]
 then
     export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
     export PATH="$PATH:/Library/TeX/texbin"
-    export PATH="$HOME/conda/miniconda3/bin:$PATH"
+# export PATH="$HOME/conda/miniconda3/bin:$PATH"  # commented out by conda initialize
     export MANPATH="/usr/local/man:/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
 elif [ "$(uname)" == Linux ]
 then
     export PATH="$PATH:/usr/local/cuda/bin"
-    export PATH="$HOME/conda/miniconda3/bin:$PATH"
+# export PATH="$HOME/conda/miniconda3/bin:$PATH"  # commented out by conda initialize
 fi
 
 export PYTHONUNBUFFERED=1
