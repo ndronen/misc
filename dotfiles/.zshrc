@@ -72,6 +72,7 @@ ZSH_THEME="af-magic"
 plugins=(
     git
     pipenv
+    virtualenv
 )
 
 source $ZSH/oh-my-zsh.sh
