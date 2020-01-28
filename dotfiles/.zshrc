@@ -104,10 +104,14 @@ source $ZSH/oh-my-zsh.sh
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 #
 
+
 # Update PS1 if running interactively and not in a virtual environment.
 if [ "$PS1" ]
 then
     bindkey -v
+
+    # Do not share history between windows.
+    unsetopt share_history
 
     # Set history size
     export HISTSIZE=10000
