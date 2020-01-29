@@ -2,14 +2,13 @@
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
 
 # Path to your oh-my-zsh installation.
-export ZSH="$HOME/.oh-my-zsh"
+export ZSH="/Users/ndronen/.oh-my-zsh"
 
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time oh-my-zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-ZSH_THEME="af-magic"
-
+ZSH_THEME="dogenpunk"
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
@@ -69,11 +68,7 @@ ZSH_THEME="af-magic"
 # Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(
-    git
-    pipenv
-    virtualenv
-)
+plugins=(git)
 
 source $ZSH/oh-my-zsh.sh
 
@@ -102,16 +97,19 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-#
 
 
 # Update PS1 if running interactively and not in a virtual environment.
 if [ "$PS1" ]
 then
+    # Use vim key bindings.
     bindkey -v
+    # Open command in vim using ^V
+    bindkey -M vicmd v edit-command-line
+    setopt hist_ignore_dups
 
-    # Do not share history between windows.
     unsetopt share_history
+    setopt hist_ignore_all_dups
 
     # Set history size
     export HISTSIZE=10000
@@ -126,11 +124,14 @@ then
     # Add timestamp for each entry
     setopt EXTENDED_HISTORY
 
+    # Some more ls aliases
     alias vi=nvim
     alias more=less
     alias lc='clear ; ls -l'
     alias lm='ls -l | less'
     alias screen='screen -aA'
+    alias typora='open -a Typora'
+    alias R='R --quiet'
     if [ -z $(which seq) ]
     then
         alias seq=gseq
