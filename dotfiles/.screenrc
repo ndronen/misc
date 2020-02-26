@@ -1,8 +1,10 @@
-term "screen-256color"
 # terminfo and termcap for nice 256 color terminal
-# # allow bold colors - necessary for some reason
+term "screen-256color"
+# allow bold colors - necessary for some reason
 attrcolor b ".I" 
-# # tell screen how to set colors. AB = background, AF=foreground 
+# tell screen how to set colors. AB = background, AF=foreground 
 termcapinfo xterm 'Co#256:AB=\E[48;5;%dm:AF=\E[38;5;%dm' 
-# # erase background with current bg color 
+# erase background with current bg color 
 defbce "on" 
+# keep 2000 lines in buffer
+defscrollback 2000
