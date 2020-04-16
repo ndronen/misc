@@ -2,6 +2,9 @@ set softtabstop=4
 set shiftwidth=4
 set expandtab
 set ts=4
+set wrap
+set linebreak
+set tw=72
 
 " execute pathogen#infect()
 
