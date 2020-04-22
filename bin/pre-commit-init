@@ -1,0 +1,5 @@
+#!/bin/bash
+
+pip install pre-commit yapf flake8 isort
+pre-commit install
+pre-commit run --all-files
