@@ -1,5 +1,7 @@
 #!/bin/bash
 
 pip install pre-commit yapf flake8 isort
-pre-commit install
+pre-commit install --hook-type pre-commit
+pre-commit install --hook-type pre-push
+pre-commit install-hooks
 pre-commit run --all-files
