@@ -125,7 +125,7 @@ then
     setopt EXTENDED_HISTORY
 
     # Some more ls aliases
-    alias vi=nvim
+    alias vi=vim
     alias more=less
     alias lc='clear ; ls -l'
     alias lm='ls -l | less'
