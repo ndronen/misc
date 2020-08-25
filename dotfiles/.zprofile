@@ -6,6 +6,7 @@ export VISUAL=$EDITOR
 export LESS="-erX"
 export TZ=America/New_York
 export PYTHONHASHSEED=0
+export MAKEFLAGS="-j$(nproc)"
 
 export PATH=/usr/local/bin:$PATH:~/proj/misc/bin:~/workspace/misc/bin/
 export PATH=$PATH:/usr/local/sbin:~/.local/bin:/usr/local/texlive/2019/bin/x86_64-darwin
