@@ -4,7 +4,7 @@ set expandtab
 set ts=4
 set wrap
 set linebreak
-set tw=72
+set tw=80
 
 " execute pathogen#infect()
 
