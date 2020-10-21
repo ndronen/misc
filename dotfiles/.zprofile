@@ -1,7 +1,7 @@
 export PS1='[\u@\d \h \t \w]
 $ '
 export CVS_RSH=ssh
-export EDITOR=nvim
+export EDITOR=vim
 export VISUAL=$EDITOR
 export LESS="-erX"
 export TZ=America/New_York
