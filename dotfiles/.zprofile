@@ -28,4 +28,6 @@ fi
 
 export PYTHONUNBUFFERED=1
 
+export TF_CPP_MIN_LOG_LEVEL=3
+
 #. ~/.zshrc
