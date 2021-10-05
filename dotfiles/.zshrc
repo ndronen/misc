@@ -137,6 +137,10 @@ then
     then
         alias seq=gseq
     fi
+
+    tfquiet() {
+        export TF_CPP_MIN_LOG_LEVEL=3
+    }
 fi
 
 # The next line updates PATH for the Google Cloud SDK.
