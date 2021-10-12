@@ -141,6 +141,10 @@ then
     tfquiet() {
         export TF_CPP_MIN_LOG_LEVEL=3
     }
+
+    installpip() {
+        curl https://bootstrap.pypa.io/get-pip.py | python -
+    }
 fi
 
 # The next line updates PATH for the Google Cloud SDK.
