@@ -105,6 +105,8 @@ if [ "$PS1" ]
 then
     # Use vim key bindings.
     bindkey -v
+    # Use interactive comments.
+    set -k
     # Open command in vim using ^V
     bindkey -M vicmd v edit-command-line
     setopt hist_ignore_dups
